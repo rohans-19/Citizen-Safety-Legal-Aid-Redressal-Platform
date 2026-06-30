@@ -56,7 +56,7 @@ def fetch_incidents(days: int = NUM_BINS) -> list[dict]:
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     response = (
-        supabase.table("incidents")
+        supabase.table("civic_incidents")
         .select("district, created_at, severity")
         .gte("created_at", cutoff)
         .execute()

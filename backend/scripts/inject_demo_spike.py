@@ -41,7 +41,7 @@ def inject_spike(count: int = 15):
             "pseudonym":     f"CITIZEN-{random.randint(1000, 9999)}",
         })
 
-    supabase.table("incidents").insert(records).execute()
+    supabase.table("civic_incidents").insert(records).execute()
     print(f"[SPIKE] Injected {count} spike incidents into Bidar district.")
     print("   Dashboard should update within 30-60 seconds and show Bidar as HIGH RISK (red).")
 

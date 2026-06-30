@@ -118,7 +118,7 @@ def seed():
     BATCH = 50
     for i in range(0, len(records), BATCH):
         batch = records[i : i + BATCH]
-        supabase.table("incidents").insert(batch).execute()
+        supabase.table("civic_incidents").insert(batch).execute()
         print(f"  Inserted batch {i // BATCH + 1}: {len(batch)} records")
 
     print(f"\nDone! Seeded {len(records)} synthetic incidents across {len(DISTRICTS)} districts.")

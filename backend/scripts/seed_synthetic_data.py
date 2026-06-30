@@ -92,11 +92,10 @@ def random_incident(district: str, days_ago_max: int = 30) -> dict:
     ts = datetime.now(timezone.utc) - timedelta(days=days_ago)
     taluk_list = TALUKS.get(district, [district])
     return {
-        "id":            str(uuid.uuid4()),
         "incident_type": incident_type,
         "district":      district,
         "taluk":         random.choice(taluk_list),
-        "timestamp":     ts.isoformat(),
+        "created_at":    ts.isoformat(),
         "severity":      round(random.uniform(0.3, 1.0), 2),
         "law_matched":   LAWS[incident_type],
         "pseudonym":     f"CITIZEN-{random.randint(1000, 9999)}",

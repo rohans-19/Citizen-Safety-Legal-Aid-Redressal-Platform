@@ -57,8 +57,8 @@ def fetch_incidents(days: int = NUM_BINS) -> list[dict]:
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     response = (
         supabase.table("civic_incidents")
-        .select("district, timestamp, severity")
-        .gte("timestamp", cutoff)
+        .select("district, created_at, severity")
+        .gte("created_at", cutoff)
         .execute()
     )
     return response.data or []
@@ -93,7 +93,7 @@ def build_temporal_features(
             continue
         idx = name_to_idx[district]
         try:
-            ts = datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
+            ts = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
         except Exception:
             continue
         days_ago = (now - ts).days

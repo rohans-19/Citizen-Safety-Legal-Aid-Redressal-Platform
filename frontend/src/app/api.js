@@ -98,6 +98,20 @@ export const api = {
         }
       }
 
+      // Convert base64 PDF to a blob URL for direct in-browser download
+      let pdfBlobUrl = null
+      if (data.pdf_base64) {
+        try {
+          const byteChars = atob(data.pdf_base64)
+          const byteNumbers = new Array(byteChars.length).fill(0).map((_, i) => byteChars.charCodeAt(i))
+          const byteArray = new Uint8Array(byteNumbers)
+          const blob = new Blob([byteArray], { type: 'application/pdf' })
+          pdfBlobUrl = URL.createObjectURL(blob)
+        } catch {
+          pdfBlobUrl = null
+        }
+      }
+
       // Map backend response keys to frontend keys expected by ConfirmationScreen.jsx
       return {
         incident_type: data.incident_type || '',
@@ -106,7 +120,7 @@ export const api = {
         taluk:         '',
         routed_to:     data.routing || '',
         authority:     data.authority || '',
-        pdf_url:       data.pdf_path ? `${BACKEND_URL}/generated_pdfs/${data.pdf_path.split(/[\\/]/).pop()}` : null,
+        pdf_url:       pdfBlobUrl,
         complaint_id:  data.pseudonym || 'CS-' + Math.floor(Math.random() * 90000 + 10000),
         timestamp:     new Date().toISOString(),
         _mock:         false

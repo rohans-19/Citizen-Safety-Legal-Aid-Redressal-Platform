@@ -96,3 +96,11 @@ async def anomaly_scores():
         }
 
     return result
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # Add backend/ to python path so uvicorn can find the module when reload is enabled
+    sys.path.insert(0, BACKEND_DIR)
+    uvicorn.run("analytics.anomaly_api:app", host="127.0.0.1", port=8001, reload=True)
+

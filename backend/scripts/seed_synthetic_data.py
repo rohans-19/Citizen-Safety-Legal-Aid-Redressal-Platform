@@ -96,7 +96,7 @@ def random_incident(district: str, days_ago_max: int = 30) -> dict:
         "incident_type": incident_type,
         "district":      district,
         "taluk":         random.choice(taluk_list),
-        "timestamp":     ts.isoformat(),
+        "created_at":    ts.isoformat(),
         "severity":      round(random.uniform(0.3, 1.0), 2),
         "law_matched":   LAWS[incident_type],
         "pseudonym":     f"CITIZEN-{random.randint(1000, 9999)}",
@@ -118,7 +118,7 @@ def seed():
     BATCH = 50
     for i in range(0, len(records), BATCH):
         batch = records[i : i + BATCH]
-        supabase.table("civic_incidents").insert(batch).execute()
+        supabase.table("incidents").insert(batch).execute()
         print(f"  Inserted batch {i // BATCH + 1}: {len(batch)} records")
 
     print(f"\nDone! Seeded {len(records)} synthetic incidents across {len(DISTRICTS)} districts.")

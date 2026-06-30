@@ -56,9 +56,9 @@ def fetch_incidents(days: int = NUM_BINS) -> list[dict]:
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     response = (
-        supabase.table("civic_incidents")
-        .select("district, timestamp, severity")
-        .gte("timestamp", cutoff)
+        supabase.table("incidents")
+        .select("district, created_at, severity")
+        .gte("created_at", cutoff)
         .execute()
     )
     return response.data or []
@@ -93,7 +93,7 @@ def build_temporal_features(
             continue
         idx = name_to_idx[district]
         try:
-            ts = datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
+            ts = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
         except Exception:
             continue
         days_ago = (now - ts).days
@@ -150,6 +150,46 @@ def build_graph() -> tuple[Data, list[str], dict[str, int]]:
     return data, district_names, raw_counts
 
 
+def get_anomaly_scores() -> dict:
+    """Computes T-GAT anomaly scores and DP noised counts for all districts.
+
+    Called directly by backend/server/main.py.
+    """
+    try:
+        from analytics.privacy_heatmap import apply_dp_noise, tier_from_score
+        from analytics.tgat_anomaly import TGATAnomalyDetector, WEIGHTS_PATH
+        
+        # 1. Build live graph
+        data, district_names, raw_counts = build_graph()
+        
+        # 2. Load T-GAT model
+        model = TGATAnomalyDetector()
+        if os.path.exists(WEIGHTS_PATH):
+            model.load_state_dict(torch.load(WEIGHTS_PATH, map_location="cpu"))
+        model.eval()
+        
+        # 3. Inference
+        with torch.no_grad():
+            scores = model(data).squeeze()
+            
+        # 4. DP noise
+        noised_counts = apply_dp_noise(raw_counts, epsilon=1.0)
+        
+        # 5. Build response
+        result = {}
+        for i, name in enumerate(district_names):
+            score = float(scores[i].item())
+            result[name] = {
+                "count":         noised_counts.get(name, 0.0),
+                "anomaly_score": round(score, 4),
+                "tier":          tier_from_score(score),
+            }
+        return result
+    except Exception as e:
+        print(f"[Analytics] get_anomaly_scores failed: {e}")
+        return {}
+
+
 # ── Self-test ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("Building graph from Supabase...")
@@ -161,3 +201,4 @@ if __name__ == "__main__":
     for d, c in top:
         print(f"  {d:<22} {c} incidents")
     print("\n✅ Graph built successfully.")
+

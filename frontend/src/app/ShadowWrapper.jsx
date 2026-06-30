@@ -33,6 +33,21 @@ export default function ShadowWrapper() {
     return () => window.removeEventListener('devicemotion', handleMotion)
   }, [isSecureMode])
 
+  // ── Desktop Keyboard Shortcut for Demo (Ctrl+Shift+S) ──────────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        setIsSecureMode(prev => !prev)
+        if (isSecureMode) {
+          sessionStorage.clear()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isSecureMode])
+
   // ── 3-finger hold animation loop ─────────────────────────────────────────
   const startHoldAnimation = useCallback(() => {
     holdStartRef.current = Date.now()

@@ -1,0 +1,22 @@
+[
+  { "id": 1,  "name": "Dal Tadka",           "time": "30 min",  "category": "Lunch",     "emoji": "🍲", "description": "Yellow lentils tempered with ghee, cumin and garlic." },
+  { "id": 2,  "name": "Palak Paneer",         "time": "40 min",  "category": "Dinner",    "emoji": "🥬", "description": "Cottage cheese cubes in a smooth spinach gravy." },
+  { "id": 3,  "name": "Chole Bhature",        "time": "60 min",  "category": "Breakfast", "emoji": "🫓", "description": "Spiced chickpeas with fluffy deep-fried bread." },
+  { "id": 4,  "name": "Aloo Gobi",            "time": "25 min",  "category": "Lunch",     "emoji": "🥔", "description": "Dry potato and cauliflower stir-fry with turmeric." },
+  { "id": 5,  "name": "Rajma Chawal",         "time": "50 min",  "category": "Dinner",    "emoji": "🫘", "description": "Kidney beans in tomato-onion gravy served with rice." },
+  { "id": 6,  "name": "Masala Dosa",          "time": "45 min",  "category": "Breakfast", "emoji": "🥞", "description": "Crisp rice crepe stuffed with spiced potato filling." },
+  { "id": 7,  "name": "Butter Chicken",       "time": "55 min",  "category": "Dinner",    "emoji": "🍗", "description": "Tender chicken in a rich, mildly spiced tomato sauce." },
+  { "id": 8,  "name": "Vegetable Biryani",    "time": "60 min",  "category": "Dinner",    "emoji": "🍚", "description": "Basmati rice layered with mixed vegetables and saffron." },
+  { "id": 9,  "name": "Sambar",               "time": "35 min",  "category": "Lunch",     "emoji": "🥣", "description": "Tamarind-based lentil stew with drumstick and tomatoes." },
+  { "id": 10, "name": "Poha",                 "time": "15 min",  "category": "Breakfast", "emoji": "🍽️", "description": "Flattened rice with mustard, curry leaves and lemon." },
+  { "id": 11, "name": "Chana Masala",         "time": "40 min",  "category": "Lunch",     "emoji": "🫘", "description": "Chickpeas cooked in tangy onion-tomato-spice base." },
+  { "id": 12, "name": "Methi Thepla",         "time": "20 min",  "category": "Breakfast", "emoji": "🫓", "description": "Thin Gujarati flatbread made with fresh fenugreek leaves." },
+  { "id": 13, "name": "Kadhi Pakora",         "time": "45 min",  "category": "Dinner",    "emoji": "🍲", "description": "Yogurt-based curry with crispy gram flour fritters." },
+  { "id": 14, "name": "Upma",                 "time": "20 min",  "category": "Breakfast", "emoji": "🍚", "description": "Semolina cooked with vegetables, mustard and curry leaves." },
+  { "id": 15, "name": "Pav Bhaji",            "time": "35 min",  "category": "Snack",     "emoji": "🍞", "description": "Spiced vegetable mash served with buttered bread rolls." },
+  { "id": 16, "name": "Rogan Josh",           "time": "70 min",  "category": "Dinner",    "emoji": "🍖", "description": "Kashmiri lamb curry with aromatic whole spices." },
+  { "id": 17, "name": "Baingan Bharta",       "time": "30 min",  "category": "Lunch",     "emoji": "🫑", "description": "Smoky roasted eggplant mashed with onion and tomato." },
+  { "id": 18, "name": "Khichdi",              "time": "25 min",  "category": "Dinner",    "emoji": "🍲", "description": "Comforting rice and lentil porridge, easy on the stomach." },
+  { "id": 19, "name": "Rava Idli",            "time": "30 min",  "category": "Breakfast", "emoji": "🫓", "description": "Soft steamed cakes made from semolina and yogurt." },
+  { "id": 20, "name": "Matar Paneer",         "time": "35 min",  "category": "Lunch",     "emoji": "🧀", "description": "Peas and paneer in a spiced tomato-onion gravy." }
+]

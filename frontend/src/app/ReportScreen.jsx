@@ -69,7 +69,7 @@ export default function ReportScreen() {
           <span className="text-sm font-medium text-gray-700">Record Your Statement</span>
         </div>
         <div className="p-4">
-          <VoiceRecorder onResult={handleResult} />
+          <VoiceRecorder onResult={handleResult} district={district} />
         </div>
       </div>
 

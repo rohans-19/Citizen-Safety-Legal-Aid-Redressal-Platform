@@ -60,6 +60,16 @@ export default function ShadowWrapper() {
       if (progress < 1 && activeTouchRef.current >= MIN_TOUCH_COUNT) {
         animFrameRef.current = requestAnimationFrame(tick)
       } else if (progress >= 1) {
+        // Request DeviceMotion permission on iOS if needed
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+          DeviceMotionEvent.requestPermission()
+            .then(state => {
+              console.log('[ShadowWrapper] DeviceMotion permission:', state)
+            })
+            .catch(err => {
+              console.warn('[ShadowWrapper] DeviceMotion permission failed:', err)
+            })
+        }
         // Unlock secure mode
         setIsSecureMode(true)
         setGestureProgress(0)

@@ -14,7 +14,7 @@ const LANGUAGES = [
  * Props:
  *   onResult(data) — called with API response after processing
  */
-export default function VoiceRecorder({ onResult }) {
+export default function VoiceRecorder({ onResult, district }) {
   const [status, setStatus]             = useState('idle')     // idle | recording | processing | error
   const [transcript, setTranscript]     = useState('')
   const [language, setLanguage]         = useState('kn')
@@ -198,14 +198,20 @@ export default function VoiceRecorder({ onResult }) {
     // Submit to backend
     try {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-      const result    = await api.processVoice(audioBlob, transcript, language)
+      
+      // Run language-agnostic threat detector in the background
+      api.detectThreat(audioBlob).catch(err => {
+        console.warn('Acoustic threat detection background error:', err)
+      })
+
+      const result    = await api.processVoice(audioBlob, transcript, language, district)
       setStatus('idle')
       if (onResult) onResult(result)
     } catch {
       setErrorMsg('Failed to process recording. Please try again.')
       setStatus('error')
     }
-  }, [stopWaveform, transcript, language, onResult])
+  }, [stopWaveform, transcript, language, district, onResult])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -262,10 +268,30 @@ export default function VoiceRecorder({ onResult }) {
           <button
             id="btn-start-recording"
             onClick={startRecording}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded border border-blue-700"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded border border-blue-700 shadow-sm transition-colors duration-150"
           >
             <span className="w-2 h-2 rounded-full bg-white inline-block" />
             Start Recording
+          </button>
+        )}
+
+        {!isRecording && !isProcessing && transcript.trim() && (
+          <button
+            id="btn-submit-text"
+            onClick={async () => {
+              setStatus('processing')
+              try {
+                const result = await api.processVoice(null, transcript, language, district)
+                setStatus('idle')
+                if (onResult) onResult(result)
+              } catch {
+                setErrorMsg('Failed to process statement. Please try again.')
+                setStatus('error')
+              }
+            }}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded border border-green-700 shadow-sm transition-colors duration-150"
+          >
+            <span>📤</span> Submit Statement
           </button>
         )}
 
@@ -273,7 +299,7 @@ export default function VoiceRecorder({ onResult }) {
           <button
             id="btn-stop-recording"
             onClick={stopRecording}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded border border-red-700"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded border border-red-700 shadow-sm transition-colors duration-150"
           >
             <span className="w-2 h-2 rounded bg-white inline-block animate-pulse" />
             Stop & Submit
@@ -298,17 +324,31 @@ export default function VoiceRecorder({ onResult }) {
         )}
       </div>
 
-      {/* Live transcript display */}
-      {(isRecording || transcript) && (
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Live Transcript
-          </label>
-          <div className="border border-gray-200 rounded bg-gray-50 px-3 py-2 min-h-[60px] text-sm text-gray-700">
-            {transcript || <span className="text-gray-400 italic">Listening...</span>}
-          </div>
-        </div>
-      )}
+      {/* Statement text area */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Statement / Complaint
+        </label>
+        <textarea
+          value={transcript}
+          onChange={e => {
+            setTranscript(e.target.value)
+            const match = checkCodeWords(e.target.value)
+            if (match && match.triggered) {
+              setCodeWordAlert(match.matchedWord)
+              if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+            } else {
+              setCodeWordAlert(null)
+            }
+          }}
+          disabled={isRecording || isProcessing}
+          placeholder="Type your complaint here, or click 'Start Recording' to speak..."
+          className="w-full border border-gray-300 rounded px-3 py-2 min-h-[100px] text-sm text-gray-700 focus:outline-none focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+        />
+        {isRecording && !transcript && (
+          <p className="text-xs text-gray-400 italic mt-1 animate-pulse">Listening...</p>
+        )}
+      </div>
 
       {/* Error message */}
       {errorMsg && (

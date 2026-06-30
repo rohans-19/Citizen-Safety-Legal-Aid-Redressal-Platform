@@ -14,6 +14,14 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
 const TIMEOUT_MS  = 5000
 
+// Local state for threat detection status to bridge polling and upload
+let localThreatStatus = {
+  is_threat:  false,
+  labels:     [],
+  confidence: 0.0,
+  _mock:      true,
+}
+
 // Mock responses used when backend is unreachable
 const MOCK = {
   processVoice: {
@@ -61,31 +69,92 @@ async function callApi(url, options = {}, mockResponse) {
 export const api = {
   /**
    * POST /process-voice
-   * Sends audio blob + transcript to the backend agent swarm
+   * Sends JSON payload with transcript to the backend agent swarm
    */
-  async processVoice(audioBlob, transcript, language = 'kn') {
-    const formData = new FormData()
-    formData.append('audio',      audioBlob, 'recording.webm')
-    formData.append('transcript', transcript)
-    formData.append('language',   language)
-
-    return callApi(
+  async processVoice(audioBlob, transcript, language = 'kn', district = '') {
+    const data = await callApi(
       `${BACKEND_URL}/process-voice`,
-      { method: 'POST', body: formData },
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          transcript: transcript,
+          district:   district || 'Unknown',
+          language:   language,
+        })
+      },
       MOCK.processVoice
     )
+
+    if (data && !data._mock) {
+      let formattedLaw = ''
+      if (data.law_matched) {
+        if (typeof data.law_matched === 'object') {
+          const act = data.law_matched.act || ''
+          const sections = (data.law_matched.sections || []).join(', ')
+          formattedLaw = sections ? `${act} — ${sections}` : act
+        } else {
+          formattedLaw = String(data.law_matched)
+        }
+      }
+
+      // Map backend response keys to frontend keys expected by ConfirmationScreen.jsx
+      return {
+        incident_type: data.incident_type || '',
+        law_matched:   formattedLaw,
+        district:      district || 'Unknown',
+        taluk:         '',
+        routed_to:     data.routing || '',
+        authority:     data.authority || '',
+        pdf_url:       data.pdf_path ? `${BACKEND_URL}/generated_pdfs/${data.pdf_path.split(/[\\/]/).pop()}` : null,
+        complaint_id:  data.pseudonym || 'CS-' + Math.floor(Math.random() * 90000 + 10000),
+        timestamp:     new Date().toISOString(),
+        _mock:         false
+      }
+    }
+
+    return data
   },
 
   /**
-   * GET /detect-threat
-   * Polled every 5s by ThreatMonitor to check for AST-detected threats
+   * GET/POST /detect-threat
+   * If audioBlob is provided, runs POST to detect threat.
+   * If not, returns the current threat status.
    */
-  async detectThreat() {
-    return callApi(
+  async detectThreat(audioBlob) {
+    if (!audioBlob) {
+      return localThreatStatus
+    }
+
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'recording.wav')
+
+    const result = await callApi(
       `${BACKEND_URL}/detect-threat`,
-      { method: 'GET' },
+      {
+        method: 'POST',
+        body:   formData
+      },
       MOCK.detectThreat
     )
+
+    if (result && !result._mock) {
+      localThreatStatus = {
+        is_threat:  result.is_threat || false,
+        labels:     result.label ? [result.label] : [],
+        confidence: result.probability || 0.0,
+        _mock:      false
+      }
+    } else if (result && result._mock) {
+      localThreatStatus = {
+        is_threat:  result.is_threat || false,
+        labels:     result.labels || [],
+        confidence: result.confidence || 0.0,
+        _mock:      true
+      }
+    }
+
+    return localThreatStatus
   },
 
   /**
@@ -93,19 +162,29 @@ export const api = {
    * Verifies a Pedersen commitment from the ZKP wallet
    */
   async verifyZkp(commitment, blindingFactor) {
-    return callApi(
+    const data = await callApi(
       `${BACKEND_URL}/verify-zkp`,
       {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           commitment,
-          blinding_factor: blindingFactor,
-          claimed_range:   'BELOW_THRESHOLD',
+          proof: {
+            value_hash: blindingFactor, // Mock 64-char hex string
+            blinding_hash: blindingFactor, // Mock 64-char hex string
+          }
         }),
       },
       MOCK.verifyZkp
     )
+
+    if (data && typeof data.verified !== 'undefined') {
+      return {
+        valid:   data.verified,
+        message: data.verified ? 'Commitment verified successfully' : 'Verification failed'
+      }
+    }
+    return data
   },
 
   /**

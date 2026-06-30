@@ -49,7 +49,7 @@ def detect_threat(audio_bytes: bytes) -> dict:
         label, prob = _classify_from_analysis(analysis)
 
         threat_info = THREAT_LABELS.get(label, THREAT_LABELS["safe"])
-        is_threat = prob >= threat_info["threshold"]
+        is_threat = label != "safe" and prob >= threat_info["threshold"]
 
         return {
             "label": label,

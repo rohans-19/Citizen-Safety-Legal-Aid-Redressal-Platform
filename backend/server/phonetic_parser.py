@@ -222,12 +222,14 @@ def resolve_intent(raw_transcript: str) -> dict:
                 "method": "abbreviation_match"
             }
 
-    # Step 2: Direct keyword substring match
+    # Step 2: Direct keyword match (whole words / phrases)
     scores: dict[str, float] = {}
     for intent, terms in INTENT_VOCABULARY.items():
         score = 0.0
         for term in terms:
-            if term in text:
+            # Use regex to match whole words/phrases only
+            pattern = rf"\b{re.escape(term)}\b"
+            if re.search(pattern, text):
                 # Longer matches score higher
                 score += len(term.split()) * 1.5
         if score > 0:
@@ -247,6 +249,8 @@ def resolve_intent(raw_transcript: str) -> dict:
     words = re.findall(r'\b\w+\b', text)
     soundex_scores: dict[str, int] = {}
     for word in words:
+        if len(word) < 4:
+            continue
         code = indian_soundex(word)
         if code in _SOUNDEX_INDEX:
             for intent in _SOUNDEX_INDEX[code]:

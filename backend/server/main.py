@@ -35,7 +35,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Mount Member C's Analytics sub-app ────────────────────────────────────────
+try:
+    from analytics.anomaly_api import app as analytics_app
+    app.mount("/analytics", analytics_app)
+except Exception as e:
+    print(f"[Warning] Failed to mount analytics sub-app: {e}")
+
 # ── Static Files ─────────────────────────────────────────────────────────────
+os.makedirs("generated_pdfs", exist_ok=True)
 app.mount("/generated_pdfs", StaticFiles(directory="generated_pdfs"), name="generated_pdfs")
 
 # ── Request / Response Models ─────────────────────────────────────────────────
@@ -211,11 +219,11 @@ async def get_anomaly_scores():
     """
     Returns T-GAT anomaly scores per district.
     Called by the NGO dashboard every 30 seconds.
+    Proxies to the mounted Analytics sub-app logic.
     """
     try:
-        from analytics.graph_builder import get_anomaly_scores
-        scores = get_anomaly_scores()
-        return scores
+        from analytics.anomaly_api import anomaly_scores
+        return await anomaly_scores()
     except Exception as e:
         # Return empty scores if analytics not yet ready
         return {"scores": {}, "error": str(e)}

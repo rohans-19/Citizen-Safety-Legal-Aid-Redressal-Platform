@@ -132,6 +132,7 @@ async def process_voice(payload: VoicePayload):
             district=payload.district,
             language=payload.language
         )
+        resolved_district = swarm_result.get("district", payload.district)
 
         # Step 3: Traverse legal graph for deterministic law matching
         legal_match = traverse_legal_graph(corrected["incident_type"])
@@ -139,7 +140,7 @@ async def process_voice(payload: VoicePayload):
         # Step 4: Build PDF complaint strictly in-memory (PII protection)
         pdf_bytes, filename = build_pdf(
             incident_type=corrected["incident_type"],
-            district=payload.district,
+            district=resolved_district,
             law=legal_match,
             narrative=swarm_result.get("narrative", ""),
             authority=legal_match.get("authority", "District Collector"),
@@ -150,7 +151,7 @@ async def process_voice(payload: VoicePayload):
         # Step 5: Log anonymized incident to Supabase
         await log_incident(IncidentLog(
             incident_type=corrected["incident_type"],
-            district=payload.district,
+            district=resolved_district,
             severity=swarm_result.get("severity", 0.5),
             law_matched=legal_match.get("act", ""),
             pseudonym=swarm_result.get("pseudonym", "Citizen-X")
@@ -162,6 +163,7 @@ async def process_voice(payload: VoicePayload):
             "incident_type": corrected["incident_type"] if corrected["incident_type"] != "unknown" else "under_review",
             "law_matched": legal_match,
             "authority": legal_match.get("authority"),
+            "district": resolved_district,
             "pdf_filename": filename,
             "pdf_base64": pdf_base64,
             "routing": swarm_result.get("routing"),

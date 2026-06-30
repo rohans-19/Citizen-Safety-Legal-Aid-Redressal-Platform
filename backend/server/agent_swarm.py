@@ -277,6 +277,73 @@ def _build_graph() -> object:
 _SWARM = _build_graph()
 
 
+# ── District Detection & Geocoding ────────────────────────────────────────────
+
+_KARNATAKA_DISTRICTS = [
+    'Bagalkote', 'Ballari', 'Belagavi', 'Bengaluru Rural', 'Bengaluru Urban',
+    'Bidar', 'Chamarajanagara', 'Chikkaballapur', 'Chikkamagaluru', 'Chitradurga',
+    'Dakshina Kannada', 'Davanagere', 'Dharwad', 'Gadag', 'Hassan',
+    'Haveri', 'Kalaburagi', 'Kodagu', 'Kolar', 'Koppal',
+    'Mandya', 'Mysuru', 'Raichur', 'Ramanagara', 'Shivamogga',
+    'Tumakuru', 'Udupi', 'Uttara Kannada', 'Vijayapura', 'Yadgir', 'Vijayanagara'
+]
+
+_DISTRICT_ALIASES = {
+    'bangalore': 'Bengaluru Urban',
+    'bengaluru': 'Bengaluru Urban',
+    'belgaum': 'Belagavi',
+    'bellary': 'Ballari',
+    'gulbarga': 'Kalaburagi',
+    'bijapur': 'Vijayapura',
+    'chikmagalur': 'Chikkamagaluru',
+    'chikkamagalur': 'Chikkamagaluru',
+    'mangalore': 'Dakshina Kannada',
+    'coorg': 'Kodagu',
+    'mysore': 'Mysuru',
+    'shimoga': 'Shivamogga',
+    'tumkur': 'Tumakuru',
+}
+
+def detect_district(transcript: str, current_district: str) -> str:
+    if current_district and current_district.lower() != 'unknown' and current_district != '':
+        return current_district
+
+    normalized = transcript.lower()
+    for alias, canonical in _DISTRICT_ALIASES.items():
+        if alias in normalized:
+            return canonical
+
+    for d in _KARNATAKA_DISTRICTS:
+        if d.lower() in normalized:
+            return d
+
+    # Gemini LLM extraction fallback
+    try:
+        from google import genai
+        import os
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if api_key:
+            client = genai.Client(api_key=api_key)
+            prompt = f"""Given the following Indian citizen complaint transcript, identify if any location (district, city, town, taluk, or village) in Karnataka is mentioned.
+If so, resolve it to EXACTLY one of these 31 districts of Karnataka:
+{', '.join(_KARNATAKA_DISTRICTS)}
+
+If no location in Karnataka is mentioned, respond with "Unknown".
+Do not write anything else.
+
+Complaint: "{transcript}"
+"""
+            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            res = response.text.strip()
+            for d in _KARNATAKA_DISTRICTS:
+                if d.lower() in res.lower() or res.lower() in d.lower():
+                    return d
+    except Exception as e:
+        print(f"[Swarm] LLM district extraction error: {e}")
+
+    return "Unknown"
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 async def run_swarm(
@@ -296,12 +363,14 @@ async def run_swarm(
 
     Returns:
         dict with severity, routing, narrative, evidence_list, 
-        next_action, empathy_message, pseudonym
+        next_action, empathy_message, pseudonym, district
     """
+    resolved_district = detect_district(transcript, district)
+
     initial_state: SwarmState = {
         "transcript": transcript,
         "incident_type": incident_type,
-        "district": district,
+        "district": resolved_district,
         "language": language,
         "severity": 0.5,
         "routing": "AUTHORITY",
@@ -320,5 +389,6 @@ async def run_swarm(
         "evidence_list": final_state.get("evidence_list", []),
         "next_action": final_state.get("next_action", ""),
         "empathy_message": final_state.get("empathy_message", ""),
-        "pseudonym": final_state.get("pseudonym", "Citizen-XXXX")
+        "pseudonym": final_state.get("pseudonym", "Citizen-XXXX"),
+        "district": final_state.get("district", resolved_district)
     }

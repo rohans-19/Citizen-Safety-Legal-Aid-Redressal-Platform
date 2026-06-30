@@ -13,6 +13,10 @@ Innovation #4: Phonetic Speech-to-Intent Parser
 import re
 import unicodedata
 from typing import Optional
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
 
 # Common English stopwords to ignore in Soundex phonetic mapping
 STOPWORDS = {
@@ -210,6 +214,50 @@ for _intent, _terms in INTENT_VOCABULARY.items():
                 _SOUNDEX_INDEX[_code].append(_intent)
 
 
+
+# ── Local TF-IDF Cosine Similarity Fallback ───────────────────────────────────
+
+_CORPUS_TERMS = []
+_CORPUS_LABELS = []
+for _intent, _terms in INTENT_VOCABULARY.items():
+    for _term in _terms:
+        _CORPUS_TERMS.append(_term)
+        _CORPUS_LABELS.append(_intent)
+
+_VECTORIZER = TfidfVectorizer().fit(_CORPUS_TERMS)
+_CORPUS_VECTORS = _VECTORIZER.transform(_CORPUS_TERMS)
+
+def local_similarity_classify(text: str) -> Optional[dict]:
+    """
+    Computes TF-IDF cosine similarity against the vocabulary terms locally.
+    Provides a highly robust, high-performance semantic fallback if LLM is unavailable.
+    """
+    try:
+        x = _VECTORIZER.transform([text])
+        sims = cosine_similarity(x, _CORPUS_VECTORS)[0]
+        if not np.any(sims > 0.12):  # 0.12 similarity threshold
+            return None
+        
+        intent_scores = {}
+        for idx, score in enumerate(sims):
+            if score > 0.12:
+                intent = _CORPUS_LABELS[idx]
+                intent_scores[intent] = max(intent_scores.get(intent, 0.0), float(score))
+        
+        if intent_scores:
+            best_intent = max(intent_scores, key=intent_scores.get)
+            confidence = min(intent_scores[best_intent], 0.85)
+            return {
+                "resolved_text": text,
+                "incident_type": best_intent,
+                "confidence": confidence,
+                "method": "local_semantic_similarity"
+            }
+    except Exception as e:
+        print(f"[PhoneticParser] Local classification error: {e}")
+    return None
+
+
 # ── LLM Fallback Classification ──────────────────────────────────────────────
 
 def _llm_classify(transcript: str) -> str:
@@ -306,25 +354,26 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
 
     if soundex_scores:
         best_intent = max(soundex_scores, key=soundex_scores.__getitem__)
-        confidence = min(soundex_scores[best_intent] / 5.0, 0.75)
-        return {
-            "resolved_text": text,
-            "incident_type": best_intent,
-            "confidence": confidence,
-            "method": "soundex_phonetic"
-        }
+        if soundex_scores[best_intent] >= 2:  # Require at least 2 phonetically matching words
+            confidence = min(soundex_scores[best_intent] / 5.0, 0.75)
+            return {
+                "resolved_text": text,
+                "incident_type": best_intent,
+                "confidence": confidence,
+                "method": "soundex_phonetic"
+            }
 
     # Step 4: Levenshtein fuzzy match on individual words against all vocab terms
     best_intent = "unknown"
     best_distance = 999
     for word in words:
-        if len(word) < 4:
+        if len(word) < 4 or word in STOPWORDS:
             continue
         for intent, terms in INTENT_VOCABULARY.items():
             for term in terms:
                 term_word = term.split()[0]  # Compare against first word of each term
                 dist = levenshtein(word, term_word)
-                if dist < best_distance and dist <= 2:
+                if dist < best_distance and dist <= 1:  # Require tighter distance (<=1 instead of <=2)
                     best_distance = dist
                     best_intent = intent
 
@@ -347,7 +396,12 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
             "method": "llm_classification"
         }
 
-    # Step 6: Use frontend hint if provided
+    # Step 6: Local semantic Cosine Similarity fallback if LLM failed
+    local_match = local_similarity_classify(text)
+    if local_match:
+        return local_match
+
+    # Step 7: Use frontend hint if provided
     if hint and hint != "" and hint != "other":
         return {
             "resolved_text": text,
@@ -356,7 +410,7 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
             "method": "frontend_hint"
         }
 
-    # Step 7: Total fallback
+    # Step 8: Total fallback
     return {
         "resolved_text": text,
         "incident_type": "unknown",

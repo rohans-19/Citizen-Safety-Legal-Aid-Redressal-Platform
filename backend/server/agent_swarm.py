@@ -76,7 +76,13 @@ def _call_gemini(prompt: str, fallback: str = "") -> str:
         )
         return response.text.strip()
     except Exception as e:
-        print(f"[Gemini] Error: {e}")
+        err_msg = str(e)
+        if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
+            print("[Gemini] API Quota Exceeded (429). Using graceful fallback response.")
+        elif "API key not valid" in err_msg or "INVALID_ARGUMENT" in err_msg:
+            print("[Gemini] Invalid API Key. Using graceful fallback response.")
+        else:
+            print(f"[Gemini] Error: {err_msg[:200]}")
         return fallback
 
 

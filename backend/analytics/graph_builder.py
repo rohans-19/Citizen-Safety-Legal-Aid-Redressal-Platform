@@ -200,5 +200,5 @@ if __name__ == "__main__":
     print(f"\nTop 5 districts by raw count (last {NUM_BINS} days):")
     for d, c in top:
         print(f"  {d:<22} {c} incidents")
-    print("\n✅ Graph built successfully.")
+    print("\n[OK] Graph built successfully.")
 

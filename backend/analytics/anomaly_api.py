@@ -44,9 +44,9 @@ def get_model() -> TGATAnomalyDetector:
         _model = TGATAnomalyDetector()
         if os.path.exists(WEIGHTS_PATH):
             _model.load_state_dict(torch.load(WEIGHTS_PATH, map_location="cpu"))
-            print("✅ T-GAT weights loaded.")
+            print("[OK] T-GAT weights loaded.")
         else:
-            print("⚠️  tgat_weights.pt not found — using untrained model. Run tgat_anomaly.py first.")
+            print("[Warning] tgat_weights.pt not found — using untrained model. Run tgat_anomaly.py first.")
         _model.eval()
     return _model
 

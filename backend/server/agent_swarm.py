@@ -14,17 +14,28 @@ All agents use Gemini 1.5 Flash for speed.
 """
 import os
 import uuid
+from pathlib import Path
 from typing import TypedDict, Annotated
 from dotenv import load_dotenv
 
-load_dotenv()
+# Explicit path so it works regardless of working directory
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-import google.generativeai as genai
+from google import genai
 from langgraph.graph import StateGraph, END
 
-# ── Gemini Setup ──────────────────────────────────────────────────────────────
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
-_MODEL = genai.GenerativeModel("gemini-1.5-flash")
+# ── Gemini Setup (lazy — initialized on first call) ───────────────────────────
+_GENAI_CLIENT = None
+_MODEL_NAME = "gemini-2.0-flash"
+
+def _get_genai_client():
+    global _GENAI_CLIENT
+    if _GENAI_CLIENT is None:
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not set in backend/.env")
+        _GENAI_CLIENT = genai.Client(api_key=api_key)
+    return _GENAI_CLIENT
 
 LANGUAGE_NAMES = {
     "kn": "Kannada",
@@ -58,7 +69,11 @@ class SwarmState(TypedDict):
 
 def _call_gemini(prompt: str, fallback: str = "") -> str:
     try:
-        response = _MODEL.generate_content(prompt)
+        client = _get_genai_client()
+        response = client.models.generate_content(
+            model=_MODEL_NAME,
+            contents=prompt
+        )
         return response.text.strip()
     except Exception as e:
         print(f"[Gemini] Error: {e}")

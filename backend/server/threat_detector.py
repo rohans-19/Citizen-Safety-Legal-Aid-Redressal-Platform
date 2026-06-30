@@ -76,8 +76,23 @@ def detect_threat(audio_bytes: bytes) -> dict:
 def _analyze_audio(audio_bytes: bytes) -> dict:
     """
     Extracts RMS energy, peak amplitude, and duration from WAV bytes.
+    Transcodes non-WAV formats (like MP3, WEBM, OGG) using pydub if available.
     """
     try:
+        # Check if WAV header is present (first 4 bytes should be 'RIFF')
+        if len(audio_bytes) > 4 and audio_bytes[:4] != b"RIFF":
+            try:
+                from pydub import AudioSegment
+                # Transcode non-WAV formats (WEBM/OGG/MP3) in-memory
+                audio_seg = AudioSegment.from_file(io.BytesIO(audio_bytes))
+                wav_io = io.BytesIO()
+                audio_seg.export(wav_io, format="wav")
+                audio_bytes = wav_io.getvalue()
+            except ImportError:
+                pass
+            except Exception as e:
+                print(f"[Acoustic Threat] Transcoding warning: {e}")
+
         buf = io.BytesIO(audio_bytes)
         with wave.open(buf, 'rb') as wf:
             n_frames = wf.getnframes()

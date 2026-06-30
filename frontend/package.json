@@ -1,0 +1,21 @@
+﻿{
+  "name": "civic-shield-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "d3": "^7.9.0",
+    "axios": "^1.7.2",
+    "qrcode.react": "^3.1.0",
+    "@supabase/supabase-js": "^2.43.4"
+  },
+  "devDependencies": {
+    "vite": "^5.3.1",
+    "@vitejs/plugin-react": "^4.3.1"
+  }
+}

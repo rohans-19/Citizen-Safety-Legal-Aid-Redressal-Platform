@@ -96,4 +96,4 @@ if __name__ == "__main__":
     arr = np.array(trials)
     print(f"\nKodagu (count=1) over 1000 trials:")
     print(f"  Mean={arr.mean():.2f}, Std={arr.std():.2f}, Range=[{arr.min():.2f}, {arr.max():.2f}]")
-    print(f"\n✅ DP engine verified — individual counts are effectively masked.")
+    print(f"\n[OK] DP engine verified — individual counts are effectively masked.")

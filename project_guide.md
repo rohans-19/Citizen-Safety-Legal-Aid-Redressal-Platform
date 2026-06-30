@@ -37,12 +37,12 @@ These 8 innovations span 3 modules. Each is custom-built (not simple API calls):
 |:--|:---|:---|:---|
 | 1 | Language-Agnostic Acoustic Threat Detector (AST on AudioSet) | Client Safety | AudioSet is language-independent; survives ML Q&A |
 | 2 | Semantic Code Word Engine (Sentence-Transformers MiniLM) | Client Safety | On-device, multilingual, no internet needed |
-| 3 | Dual-Layer Shadow UI & Shake-to-Wipe (React Native) | Client Safety | Custom gesture + accelerometer engineering |
+| 3 | Dual-Layer Shadow UI & Shake-to-Wipe (React.js + Vite) | Client Safety | Custom gesture + accelerometer engineering |
 | 4 | Phonetic Speech-to-Intent Parser (Indian Soundex + Levenshtein) | Backend Core | Corrects ASR errors on regional dialects |
-| 5 | Deterministic Legal Knowledge Graph Traversal | Backend Core | Prevents hallucinations; deterministic legal citations |
-| 6 | LangGraph Multi-Agent Orchestration Swarm | Backend Core | 5-agent state machine; real orchestration |
-| 7 | Offline Zero-Knowledge Proofs (Pedersen Commitments) | Backend Core | Proves eligibility without exposing documents |
-| 8 | Temporal Graph Attention Network (T-GAT) + Differential Privacy | Analytics | Full GNN; spatiotemporal anomaly detection |
+| 5 | Deterministic Legal Knowledge Graph Traversal | Backend Core | Prevents hallucinations; JSON dictionary traversal mapping |
+| 6 | LangGraph Multi-Agent Orchestration Swarm | Backend Core | 5-agent state machine (Triage, Narrative, Evidence, Routing, Empathy) |
+| 7 | Offline Zero-Knowledge Proofs (Pedersen Commitments via SHA-256) | Backend Core | Proves eligibility without exposing documents |
+| 8 | Temporal Graph Attention Network (T-GAT) + Differential Privacy | Analytics | Full GNN; spatiotemporal anomaly detection (GATConv + GRU) |
 
 ---
 
@@ -54,7 +54,7 @@ USER INPUT (Voice/Audio)
        ▼
 ┌──────────────────────────────────────────────┐
 │           CLIENT APP (Member A)              │
-│  Decoy Recipe Shell (React Native)           │
+│  Decoy Recipe Shell (React.js + Vite)        │
 │  3-Finger Gesture → Unlock Shadow UI         │
 │  ┌─────────────────────────────────┐         │
 │  │ AST Scream/Thud Detector        │ ◄─ Mic  │
@@ -72,11 +72,11 @@ USER INPUT (Voice/Audio)
 │  ┌─────────────────────────────────┐         │
 │  │ Phonetic Soundex Parser         │         │
 │  │ LangGraph State Machine         │         │
-│  │  Agent 1: Voice Parser (Gemini) │         │
-│  │  Agent 2: Legal Graph-RAG       │         │
-│  │  Agent 3: Document Builder      │         │
-│  │  Agent 4: Safety Router         │         │
-│  │  Agent 5: Follow-up Tracker     │         │
+│  │  Agent 1: Triage Agent          │         │
+│  │  Agent 2: Narrative Agent       │         │
+│  │  Agent 3: Evidence Agent        │         │
+│  │  Agent 4: Routing Agent         │         │
+│  │  Agent 5: Empathy Agent         │         │
 │  │ Legal Knowledge Graph (JSON)    │         │
 │  └─────────────────────────────────┘         │
 │  → PDF Complaint Generated                   │
@@ -90,7 +90,7 @@ USER INPUT (Voice/Audio)
 │  │ Differential Privacy Engine     │         │
 │  │ (Laplace Noise Injector)        │         │
 │  │ T-GAT Anomaly Detector          │         │
-│  │ (GATConv + LSTM in PyTorch)     │         │
+│  │ (GATConv + GRU in PyTorch)      │         │
 │  │ Supabase DB (District Vectors)  │         │
 │  │ React Dashboard (D3.js Map)     │         │
 │  └─────────────────────────────────┘         │
@@ -108,7 +108,7 @@ USER INPUT (Voice/Audio)
 
 ### 👤 MEMBER A — Frontend & Client Safety Engineer
 
-**Your Module:** Client App (React Native / React Web)
+**Your Module:** Client App (React.js + Vite Web App)
 **Your Innovations:** #1 (AST Detector), #2 (Code Word Engine), #3 (Shadow UI + ZKP)
 
 **What You Build:**
@@ -122,17 +122,17 @@ USER INPUT (Voice/Audio)
 | `app/DecoyApp.js` | Fully working recipe shell (the decoy) |
 
 **Tech Stack You Use:**
-- React Native (Mobile) OR React.js (Web PWA)
-- `react-native-sensors` (accelerometer)
-- `react-native-gesture-handler` (multi-touch)
-- WebSpeech API (voice transcription)
-- `crypto` (Node.js built-in for ZKP)
-- `@zxing/library` or `qrcode.react` (QR generation)
+- React.js + Vite (Web App)
+- Accelerometer API via Window DeviceMotionEvent / standard Web Sensors
+- TouchEvents (multi-touch gesture tracking)
+- webkitSpeechRecognition API (voice transcription)
+- `crypto-js` or browser WebCrypto API (for ZKP)
+- `qrcode.react` (QR generation)
 
 **Timeline:**
-- **Hour 0-3:** Set up React Native project. Build the decoy recipe shell UI completely first.
+- **Hour 0-3:** Set up React.js + Vite project. Build the decoy recipe shell UI completely first.
 - **Hour 3-8:** Implement the 3-finger gesture unlock and shake-to-wipe.
-- **Hour 8-14:** Wire up VoiceRecorder and WebSpeech transcription.
+- **Hour 8-14:** Wire up VoiceRecorder and webkitSpeechRecognition transcription.
 - **Hour 14-20:** Implement ZKP wallet and QR code generator.
 - **Hour 20-24:** Connect to Member B's backend API endpoints. Test full flow.
 
@@ -161,16 +161,16 @@ USER INPUT (Voice/Audio)
 **Tech Stack You Use:**
 - Python + FastAPI
 - LangGraph + LangChain
-- Gemini 1.5 Flash API (Free tier, 1M tokens/day)
+- Gemini 2.0 Flash API (Free tier, 1M tokens/day)
 - `sentence-transformers` MiniLM
 - `transformers` (HuggingFace, for AST model)
 - `reportlab` or `fpdf2` (PDF generation)
-- `networkx` (graph traversal)
+- JSON dictionary traversal mapping (zero-dependency graph lookup)
 
 **Timeline:**
 - **Hour 0-4:** Set up FastAPI server. Define all endpoint signatures first (even empty stubs) so Member A can integrate.
 - **Hour 4-8:** Build the Legal Knowledge Graph JSON fully. Write traversal function.
-- **Hour 8-14:** Build LangGraph swarm (all 5 agents wired together).
+- **Hour 8-14:** Build LangGraph swarm (all 5 agents wired together: Triage, Narrative, Evidence, Routing, Empathy).
 - **Hour 14-18:** Integrate phonetic parser into the swarm pipeline.
 - **Hour 18-22:** Load AST threat detector, wire PDF builder, test end-to-end.
 - **Hour 22-24:** Integration testing with Member A's frontend.
@@ -189,7 +189,7 @@ USER INPUT (Voice/Audio)
 **What You Build:**
 | File | What It Does |
 |:---|:---|
-| `server/tgat_anomaly.py` | GATConv + LSTM anomaly detector (PyTorch Geometric) |
+| `server/tgat_anomaly.py` | GATConv + GRU anomaly detector (PyTorch Geometric) |
 | `server/privacy_heatmap.py` | Laplace noise DP engine + district aggregation |
 | `server/graph_builder.py` | Constructs community graph from Supabase incident data |
 | `dashboard/index.html` | React + D3.js NGO command center map |
@@ -241,7 +241,7 @@ Once agreed, both can work independently.
 ### 🔁 Checkpoint 2 — Hour 22 (Full Integration Test)
 **Who:** All 3 Members
 **What:** Run a complete end-to-end demo flow together:
-1. Member A sends a voice note from the React Native client.
+1. Member A sends a voice note from the React.js + Vite client.
 2. Member B's swarm processes it and logs to Supabase.
 3. Member C's dashboard picks up the new incident, runs DP noise, shows T-GAT anomaly spike.
 4. Fix any integration bugs together.
@@ -270,7 +270,7 @@ Once agreed, both can work independently.
 | Frontend | React Native / React.js | Free |
 | Backend | FastAPI on Render | Free tier |
 | Agent Swarm | LangGraph + LangChain | Free |
-| LLM | Gemini 1.5 Flash API | Free (1M tokens/day) |
+| LLM | Gemini 2.0 Flash API | Free (1M tokens/day) |
 | GNN | PyTorch + PyTorch Geometric | Free |
 | AST Model | HuggingFace MIT/ast-audioset | Free |
 | Sentence NLP | paraphrase-multilingual-MiniLM | Free |
@@ -590,8 +590,8 @@ You own the **entire intelligence layer**. Every decision the system makes about
 | **FastAPI Server Setup** | Set up the FastAPI server with CORS enabled. Define all endpoint stubs (empty but typed) by Hour 4. | `GET /health` returns 200. All endpoints are defined and documented in a README. |
 | **Phonetic Soundex Parser** | Build the Indian phonetic mapping + Levenshtein distance matching against the legal registry. | "Guru Laxmy" resolves to "Gruha Lakshmi" with confidence > 0.75. |
 | **Legal Knowledge Graph** | Define the full JSON graph of protective acts (SC/ST Act, PWDV Act, POSH Act, MNREGA) and welfare schemes. Write the traversal function. | Given incident type "spousal violence", traversal returns PWDV Act Section 3, IPC 498A, relief types, and authority details within 100ms. |
-| **LangGraph Agent Swarm** | Build the full 5-node StatGraph: Voice Parser → Graph-RAG → Doc Builder → Safety Router → Follow-up Tracker. | A voice input reaches the swarm and exits as a PDF complaint path and a safety routing decision. |
-| **Gemini API Integration** | Wire Gemini 1.5 Flash to the Voice Parser and Doc Builder agents. Prompt must return structured JSON, not free text. | Gemini returns a valid `{incident_type, location, timestamp, severity}` JSON object for any voice input. |
+| **LangGraph Agent Swarm** | Build the full 5-node StateGraph: Triage → Narrative → Evidence → Routing → Empathy. | A voice input reaches the swarm and exits as a PDF complaint path, evidence checklist, next actions, and empathy message. |
+| **Gemini API Integration** | Wire Gemini 2.0 Flash to the swarm agents. Prompt must return structured text/JSON as expected by the Swarm State. | Swarm generates a valid narrative, evidence list, and empathy message for any voice input. |
 | **PDF Complaint Builder** | Generate a legally formatted PDF using `reportlab` or `fpdf2`. Include citizen pseudonym, incident details, law sections, authority name, and submission date. | PDF opens correctly, looks professional, has all required fields filled. |
 | **AST Threat Detector API** | Load the HuggingFace AST model. Expose `/detect-threat` endpoint that accepts audio bytes and returns threat labels + probabilities. | Audio of a scream returns `is_threat: true` with `Scream` probability > 0.65. |
 | **ZKP Verifier Endpoint** | Expose `/verify-zkp` endpoint. Take commitment + proof object, verify Pedersen commitment and range bound. | Member A's QR commitment passes verification. A modified value fails. |
@@ -627,7 +627,7 @@ You own the **data aggregation, anomaly intelligence, and visualization layer**.
 | **Karnataka District Graph** | Build the `karnataka_district_graph.json` file with district nodes and geographical edge connections. | Graph has all 31 Karnataka districts as nodes with correct border adjacencies as edges. |
 | **Synthetic Data Seeder** | Write `scripts/seed_synthetic_data.py` to pre-populate the graph with realistic historical incident distributions. | Script runs and inserts 200+ synthetic incidents spread across 31 districts with realistic weightings. |
 | **Differential Privacy Engine** | Implement the Laplace noise injector. Input: raw district counts. Output: noised counts safe for public display. | District count of 1 is reliably masked. District count of 50 remains approximately correct (±5). |
-| **T-GAT Model** | Build the GATConv + LSTM PyTorch model. Train on the synthetic graph. Save weights as `tgat_weights.pt`. | Model scores an anomaly probability for each district node. High-incident districts score > 0.75. |
+| **T-GAT Model** | Build the GATConv + GRU PyTorch model. Train on the synthetic graph. Save weights as `tgat_weights.pt`. | Model scores an anomaly probability for each district node. High-incident districts score > 0.75. |
 | **Graph Builder** | Write `server/graph_builder.py` that reads from Supabase, builds the live PyG graph object, and feeds it to the T-GAT model. | Runs on demand and returns updated anomaly scores within 10 seconds. |
 | **Anomaly Alert API** | Expose `/anomaly-scores` endpoint that returns per-district anomaly probability scores. | Returns JSON like `{"Bidar": 0.82, "Raichur": 0.71, ...}` based on current DB state. |
 | **React + D3.js Dashboard** | Build the NGO command center map. Show Karnataka districts colored by anomaly severity. Display DP-noised incident counts on hover. | Map loads, districts are colored correctly by risk tier (green/yellow/red), hover shows count. |
@@ -731,7 +731,7 @@ civic-shield/  (Awaaz/)
     │       ├── 📄 test_zkp.py
     │       └── 📄 test_threat_detector.py
     ├── 📁 analytics/                         ← Member C owns everything here
-    │   ├── 📄 tgat_anomaly.py                ← T-GAT model (GATConv + LSTM) + training.
+    │   ├── 📄 tgat_anomaly.py                ← T-GAT model (GATConv + GRU) + training.
     │   ├── 📄 privacy_heatmap.py             ← Laplace noise DP engine.
     │   ├── 📄 graph_builder.py               ← Supabase → PyG graph builder.
     │   ├── 📄 anomaly_api.py                 ← FastAPI sub-app: /anomaly-scores.

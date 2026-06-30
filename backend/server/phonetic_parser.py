@@ -11,6 +11,7 @@ Handles:
 Innovation #4: Phonetic Speech-to-Intent Parser
 """
 import re
+import os
 import unicodedata
 from typing import Optional
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -45,7 +46,9 @@ INTENT_VOCABULARY = {
         "called names", "jati ke naam", "sc st", "scheduled caste",
         "scheduled tribe", "prevent from temple", "barred entry",
         "upper caste", "lower caste", "brahmin", "OBC abuse",
-        "gruhaa lakshmi sc", "caste atrocity", "ssc", "sebc"
+        "gruhaa lakshmi sc", "caste atrocity", "ssc", "sebc",
+        "ಜಾತಿ", "ದಲಿತ", "ದೌರ್ಜನ್ಯ", "ಭೇದಭಾವ", "ಶೋಷಣೆ", "ಜಾತಿ ನಿಂದನೆ", "ಶೋಷಿತರು",
+        "जाति", "दलित", "अत्याचार", "भेदभाव", "हरिजन", "छुआछूत"
     ],
     "domestic_violence": [
         "domestic", "husband", "wife", "beaten", "beat", "abuse",
@@ -53,73 +56,95 @@ INTENT_VOCABULARY = {
         "pati", "gharelu hinsa", "stree", "mahila", "ghar mein",
         "pita raha", "mara", "maar", "dowry death", "498a",
         "domestic abuse", "home violence", "ghar pe maar",
-        "in laws", "sasural", "family violence"
+        "in laws", "sasural", "family violence",
+        "ಗಂಡ", "ಹೊಡೆಯುತ್ತಾನೆ", "ಹಿಂಸೆ", "ವರದಕ್ಷಿಣೆ", "ಕಿರುಕುಳ", "ಕೌಟುಂಬಿಕ ಹಿಂಸೆ", "ಕೊಲೆ ಬೆದರಿಕೆ",
+        "पति", "मारपीट", "घरेलू हिंसा", "दहेज", "ससुराल"
     ],
     "sexual_harassment_workplace": [
         "sexual harassment", "posh", "workplace", "boss", "colleague",
         "molested", "touched", "inappropriate", "unwanted", "office",
         "job", "superior", "manager", "sexual advance", "groping",
         "dirty jokes", "hostile work", "gender discrimination",
-        "yoni peedan", "laiṅgik utpīṛan"
+        "yoni peedan", "laiṅgik utpīṛan",
+        "ಲೈಂಗಿಕ ಕಿರುಕುಳ", "ಸ್ಪರ್ಶ", "ಕಚೇರಿ", "ಅಧಿಕಾರಿ", "ಬಾಸ್", "ಯೌನ ಶೋಷಣೆ",
+        "यौन उत्पीड़न", "गलत छूना", "छेड़छाड़", "नौकरी", "दफ्तर"
     ],
     "wage_theft": [
         "salary", "wages", "not paid", "money withheld", "labour",
         "worker", "employer", "bonus", "dues", "payment pending",
         "mazdoor", "vetana", "tankhwa", "kaam ke paise", "paisa nahi",
         "mujhe paise do", "contract labour", "daily wage", "minimum wage",
-        "unpaid", "payroll", "overdue salary", "salary cut"
+        "unpaid", "payroll", "overdue salary", "salary cut",
+        "ಸಂಬಳ", "ಕೂಲಿ", "ಹಣ", "ವೇತನ", "ಕೆಲಸದ ಹಣ", "ಬಾಕಿ",
+        "मजदूरी", "वेतन", "पैसे नहीं दिए", "कमाई", "काम के पैसे"
     ],
     "mnrega_denial": [
         "mnrega", "nrega", "job card", "100 days", "rural work",
         "gram panchayat", "muster roll", "work not given", "employment",
         "sarpanch cheating", "job card nahi", "kaam nahi mila",
-        "rozgar guarantee", "mgnrega", "rozgar", "gram sabha work"
+        "rozgar guarantee", "mgnrega", "rozgar", "gram sabha work",
+        "ಉದ್ಯೋಗ ಖಾತರಿ", "ಖಾತರಿ ಕೆಲಸ", "ಜಾಬ ಕಾರ್ಡ್", "ಮನರೇಗಾ", "ನರೇಗಾ",
+        "मनरेगा", "रोजगार", "जॉब कार्ड"
     ],
     "disability_discrimination": [
         "disability", "disabled", "handicap", "wheelchair", "blind",
         "deaf", "differently abled", "special needs", "rpwd", "viklang",
         "divyang", "andha", "bahira", "pahiya kursi", "prosthetic",
-        "barrier", "ramp not given", "accessible", "disability card"
+        "barrier", "ramp not given", "accessible", "disability card",
+        "ಅಂಗವಿಕಲ", "ಕುರುಡು", "ಕಿವುಡು", "ವ್ಹೀಲ್ ಚೇರ್", "ವಿಕಲಚೇತನರು",
+        "दिव्यांग", "विकलांग", "अंधा", "बहरा"
     ],
     "pension_denial": [
         "pension", "old age", "widow pension", "disability pension",
         "social security", "not receiving", "stopped pension",
         "budhapa", "vidhwa", "vridha", "pension band ho gaya",
         "pension nahi aa raha", "vriddha pension", "nsap",
-        "ignoaps", "old age home", "senior citizen"
+        "ignoaps", "old age home", "senior citizen",
+        "ಪಿಂಚಣಿ", "ವೃದ್ಧಾಪ್ಯ", "ವಿಧವೆ", "ಸಾಮಾಜಿಕ ಭದ್ರತೆ",
+        "पेंशन", "वृद्धावस्था", "विधवा"
     ],
     "ration_denial": [
         "ration", "pds", "fair price shop", "ration card", "food",
         "rice", "wheat", "grain", "not giving ration", "ration denied",
         "anna bhagya", "ration dukan", "kerosene", "subsidized food",
         "ration shop closed", "weight less", "short weight",
-        "fpds", "nfsa", "sasta anaj", "bpl card"
+        "fpds", "nfsa", "sasta anaj", "bpl card",
+        "ರೇಷನ್", "ಅಕ್ಕಿ", "ಗೋಧಿ", "ಅನ್ನ ಭಾಗ್ಯ", "ಪಡಿತರ", "ರೇಷನ್ ಕಾರ್ಡ್",
+        "राशन", "अनाज", "गेहूं", "चावल", "राशन कार्ड"
     ],
     "healthcare_denial": [
         "hospital", "treatment", "ayushman", "pmjay", "health card",
         "denied treatment", "medicine", "doctor refused", "emergency",
         "icu", "ambulance", "operation denied", "arogya", "swasthya",
         "ilaj", "dawai nahi", "hospital ne bhaga diya", "bedside",
-        "free treatment", "cashless", "insurance card rejected"
+        "free treatment", "cashless", "insurance card rejected",
+        "ಆಸ್ಪತ್ರೆ", "ಚಿಕಿತ್ಸೆ", "ವೈದ್ಯರು", "ಔಷಧಿ", "ಆರೋಗ್ಯ ಕಾರ್ಡ್",
+        "अस्पताल", "इलाज", "दवाई", "डॉक्टर"
     ],
     "child_labour": [
         "child labour", "child work", "minor working", "school dropout",
         "child factory", "balmazdoori", "bachcha", "chota ladka kaam",
         "hotel pe kaam", "dhaba pe ladka", "underage working",
-        "forced child", "child servant", "bonded child"
+        "forced child", "child servant", "bonded child",
+        "ಬಾಲ ಕಾರ್ಮಿಕ", "ಮಕ್ಕಳ ಕೆಲಸ", "ಶಾಲೆ ಬಿಟ್ಟ ಮಕ್ಕಳು",
+        "बालश्रम", "बाल मजदूरी", "बच्चा"
     ],
     "bonded_labour": [
         "bonded labour", "forced work", "debt bondage", "slavery",
         "bandhua", "cannot leave", "imprisoned working", "bandhua mazdoor",
         "forced to work", "held against will", "debt trap work",
-        "advance taken cannot go", "farm bondage"
+        "advance taken cannot go", "farm bondage",
+        "ಬಂಧಿತ ಕಾರ್ಮಿಕ", "ಬಲವಂತದ ಕೆಲಸ", "ಸಾಲದ ಬಂಧನ",
+        "बंधुआ मजदूरी", "जबरन काम"
     ],
     "land_encroachment": [
         "land", "eviction", "encroachment", "forest rights", "patta",
         "tribal land", "dispossession", "bulldozer", "zameen",
         "mera zameen", "van adhikar", "pattas nahi", "PESA",
         "forest act", "writ of possession", "khata khatauni",
-        "land record", "revenue record", "phaisal"
+        "land record", "revenue record", "phaisal",
+        "ಭೂಮಿ ಒತ್ತುವರಿ", "ಒಕ್ಕಲೆಬ್ಬಿಸುವಿಕೆ", "ಅರಣ್ಯ ಹಕ್ಕುಗಳು", "ಪಟ್ಟಾ",
+        "भूमि अतिक्रमण", "बेदखली", "जमीन"
     ]
 }
 
@@ -235,12 +260,12 @@ def local_similarity_classify(text: str) -> Optional[dict]:
     try:
         x = _VECTORIZER.transform([text])
         sims = cosine_similarity(x, _CORPUS_VECTORS)[0]
-        if not np.any(sims > 0.12):  # 0.12 similarity threshold
+        if not np.any(sims > 0.20):  # 0.20 similarity threshold (tightened to reduce false positives)
             return None
         
         intent_scores = {}
         for idx, score in enumerate(sims):
-            if score > 0.12:
+            if score > 0.20:
                 intent = _CORPUS_LABELS[idx]
                 intent_scores[intent] = max(intent_scores.get(intent, 0.0), float(score))
         
@@ -262,9 +287,44 @@ def local_similarity_classify(text: str) -> Optional[dict]:
 
 def _llm_classify(transcript: str) -> str:
     """Last-resort LLM classification when all heuristic methods fail."""
+    # 1. Try Groq if GROQ_API_KEY is configured
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if groq_key:
+        try:
+            import httpx
+            valid_types = list(INTENT_VOCABULARY.keys())
+            prompt = f"""Classify this Indian citizen complaint into EXACTLY one of these categories:
+{', '.join(valid_types)}
+
+Complaint: "{transcript}"
+
+Respond with ONLY the category name, nothing else."""
+            headers = {
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json"
+            }
+            body = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1
+            }
+            response = httpx.post("https://api.groq.com/openai/v1/chat/completions", json=body, headers=headers, timeout=10.0)
+            if response.status_code == 200:
+                result = response.json()["choices"][0]["message"]["content"].strip().lower().replace(" ", "_").replace("-", "_")
+                if result in valid_types:
+                    return result
+                # Fuzzy match the LLM output against valid types
+                for vt in valid_types:
+                    if vt in result or result in vt:
+                        return vt
+            else:
+                print(f"[PhoneticParser] Groq returned status {response.status_code}: {response.text}")
+        except Exception as e:
+            print(f"[PhoneticParser] Groq classification error: {e}")
+
+    # 2. Fallback to Gemini
     try:
         from google import genai
-        import os
         api_key = os.getenv("GEMINI_API_KEY", "")
         if not api_key:
             return "unknown"
@@ -307,6 +367,17 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
         dict with resolved_text, incident_type, confidence, method
     """
     text = raw_transcript.strip().lower()
+
+    # Step 0: User-selected manual override takes absolute precedence (common sense)
+    if hint and hint.strip() and hint.strip() != 'other':
+        h = hint.strip().lower()
+        if h in INTENT_VOCABULARY:
+            return {
+                "resolved_text": text,
+                "incident_type": h,
+                "confidence": 1.0,
+                "method": "frontend_manual_override"
+            }
 
     # Step 1: Check abbreviations first (fast, exact)
     for abbr, intent in ABBREVIATIONS.items():
@@ -354,7 +425,7 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
 
     if soundex_scores:
         best_intent = max(soundex_scores, key=soundex_scores.__getitem__)
-        if soundex_scores[best_intent] >= 2:  # Require at least 2 phonetically matching words
+        if soundex_scores[best_intent] >= 1:  # Require at least 1 phonetically matching word
             confidence = min(soundex_scores[best_intent] / 5.0, 0.75)
             return {
                 "resolved_text": text,
@@ -373,7 +444,7 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
             for term in terms:
                 term_word = term.split()[0]  # Compare against first word of each term
                 dist = levenshtein(word, term_word)
-                if dist < best_distance and dist <= 1:  # Require tighter distance (<=1 instead of <=2)
+                if dist < best_distance and dist <= (1 if len(word) < 6 else 2):  # <=1 for short words to avoid cross-matching
                     best_distance = dist
                     best_intent = intent
 
@@ -386,7 +457,12 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
             "method": "levenshtein_fuzzy"
         }
 
-    # Step 5: LLM classification as last resort
+    # Step 5: Local semantic Cosine Similarity (fast, reliable, no API cost)
+    local_match = local_similarity_classify(text)
+    if local_match:
+        return local_match
+
+    # Step 6: LLM classification as last resort (may hit rate limits)
     llm_result = _llm_classify(text)
     if llm_result != "unknown":
         return {
@@ -394,20 +470,6 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
             "incident_type": llm_result,
             "confidence": 0.60,
             "method": "llm_classification"
-        }
-
-    # Step 6: Local semantic Cosine Similarity fallback if LLM failed
-    local_match = local_similarity_classify(text)
-    if local_match:
-        return local_match
-
-    # Step 7: Use frontend hint if provided
-    if hint and hint != "" and hint != "other":
-        return {
-            "resolved_text": text,
-            "incident_type": hint,
-            "confidence": 0.40,
-            "method": "frontend_hint"
         }
 
     # Step 8: Total fallback

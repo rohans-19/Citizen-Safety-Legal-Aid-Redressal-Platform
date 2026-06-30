@@ -96,7 +96,7 @@ def random_incident(district: str, days_ago_max: int = 30) -> dict:
         "district":      district,
         "taluk":         random.choice(taluk_list),
         "severity":      round(random.uniform(0.3, 1.0), 2),
-        "law_matched":   LAWS[incident_type],
+        "law":           LAWS[incident_type],
         "pseudonym":     f"CITIZEN-{random.randint(1000, 9999)}",
     }
 

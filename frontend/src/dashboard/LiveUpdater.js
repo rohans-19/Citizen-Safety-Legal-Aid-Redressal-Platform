@@ -9,7 +9,7 @@ const POLL_INTERVAL_MS = 30_000;
 
 export default function LiveUpdater({ onUpdate, onError }) {
   const timerRef = useRef(null);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8001";
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
   const fetchScores = async () => {
     try {

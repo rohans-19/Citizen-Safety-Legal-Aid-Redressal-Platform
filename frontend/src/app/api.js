@@ -11,8 +11,9 @@
  *   GET  /health           — Backend health check
  */
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
 const TIMEOUT_MS  = 30000
+const ENABLE_MOCKS = import.meta.env.VITE_ENABLE_MOCKS === 'true' || import.meta.env.DEV
 
 // Local state for threat detection status to bridge polling and upload
 let localThreatStatus = {
@@ -64,8 +65,11 @@ async function callApi(url, options = {}, mockResponse) {
     return await res.json()
   } catch (err) {
     clearTimeout(timerId)
+    if (!ENABLE_MOCKS) {
+      throw err
+    }
     console.warn(`[API] Offline/error for ${url} — using mock.`, err.message)
-    return { ...mockResponse, _mock: true }
+    return { ...mockResponse, _mock: true, _error: err.message }
   }
 }
 
@@ -82,7 +86,7 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           transcript: transcript,
-          district:   district || 'Unknown',
+          district:   district || '',
           language:   language,
           incident_type_hint: incidentType || '',
         })
@@ -120,8 +124,8 @@ export const api = {
       return {
         incident_type:   data.incident_type || '',
         law_matched:     formattedLaw,
-        district:        district || 'Unknown',
-        taluk:           '',
+        district:        data.district || district || 'Unknown',
+        taluk:           data.taluk || '',
         routed_to:       data.routing || '',
         authority:       data.authority || '',
         pdf_url:         pdfBlobUrl,
@@ -131,6 +135,7 @@ export const api = {
         next_action:     data.next_action || '',
         empathy_message: data.empathy_message || '',
         severity:        data.severity || 0.5,
+        db_logged:       data.db_logged !== false,
         _mock:           false
       }
     }
@@ -214,12 +219,14 @@ export const api = {
    * Returns true/false, used to show connection status
    */
   async healthCheck() {
+    const controller = new AbortController()
+    const timerId = setTimeout(() => controller.abort(), 3000)
     try {
-      const controller = new AbortController()
-      setTimeout(() => controller.abort(), 3000)
       const res = await fetch(`${BACKEND_URL}/health`, { signal: controller.signal })
+      clearTimeout(timerId)
       return res.ok
     } catch {
+      clearTimeout(timerId)
       return false
     }
   },

@@ -27,9 +27,28 @@ from analytics.tgat_anomaly import TGATAnomalyDetector, WEIGHTS_PATH   # noqa: E
 # ── App ────────────────────────────────────────────────────────────────────────
 app = FastAPI(title="CIVIC-SHIELD Analytics API", version="1.0.0")
 
+
+def _split_origins(value: str) -> list[str]:
+    return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+
+
+def _allowed_origins() -> list[str]:
+    configured = _split_origins(os.getenv("CORS_ORIGINS", ""))
+    frontend_url = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+    if frontend_url:
+        configured.append(frontend_url)
+    defaults = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    return sorted(set(configured + defaults))
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tightened in production via FRONTEND_URL
+    allow_origins=_allowed_origins(),
     allow_methods=["GET"],
     allow_headers=["*"],
 )

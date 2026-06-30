@@ -1,5 +1,5 @@
 /**
- * AnomalyAlert.js — Member C
+ * AnomalyAlert.jsx — Member C
  * Sidebar panel that lists districts where the T-GAT anomaly score > 0.75 (HIGH risk).
  * Sorted by score descending. Pulses on new alerts.
  */

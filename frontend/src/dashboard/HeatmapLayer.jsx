@@ -1,5 +1,5 @@
 /**
- * HeatmapLayer.js — Member C
+ * HeatmapLayer.jsx — Member C
  * D3.js Karnataka district choropleth map driven by T-GAT anomaly scores.
  * Colors: green (LOW) → amber (MEDIUM) → red (HIGH)
  * Emits onDistrictHover(districtName, mouseX, mouseY) for tooltip.

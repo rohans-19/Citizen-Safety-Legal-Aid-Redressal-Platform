@@ -105,7 +105,7 @@ function HomeTab() {
       <div className="border border-blue-200 bg-blue-50 rounded px-4 py-3">
         <p className="text-sm font-semibold text-blue-800">You are in Secure Mode</p>
         <p className="text-xs text-blue-600 mt-0.5">
-          Shake the device at any time to immediately exit and wipe this session.
+          Shake the device at any time to immediately exit and wipe this session. If you are in immediate danger, call 112 first.
         </p>
       </div>
 
@@ -163,6 +163,7 @@ function HomeTab() {
         </div>
         <div className="divide-y divide-gray-100">
           {[
+            { name: 'Emergency Response', number: '112' },
             { name: 'Police',            number: '100' },
             { name: 'Women Helpline',    number: '1091' },
             { name: 'SC/ST Helpline',    number: '14566' },

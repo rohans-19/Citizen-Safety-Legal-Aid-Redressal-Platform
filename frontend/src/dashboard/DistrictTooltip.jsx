@@ -1,5 +1,5 @@
 /**
- * DistrictTooltip.js — Member C
+ * DistrictTooltip.jsx — Member C
  * Hover tooltip showing DP-noised incident count + T-GAT anomaly score.
  * Positioned absolutely; parent must have position: relative.
  */

@@ -51,7 +51,7 @@ async def log_incident(payload) -> str:
         district TEXT NOT NULL,
         taluk TEXT DEFAULT '',
         severity FLOAT DEFAULT 0.5,
-        law_matched TEXT DEFAULT '',
+        law TEXT DEFAULT '',
         pseudonym TEXT DEFAULT '',
         created_at TIMESTAMPTZ DEFAULT now()
     );
@@ -91,7 +91,7 @@ def get_incidents_by_district(district: str, limit: int = 100) -> list:
         client = _get_client()
         response = (
             client.table("civic_incidents")
-            .select("incident_type, district, taluk, severity, law_matched, created_at")
+            .select("incident_type, district, taluk, severity, law, created_at")
             .eq("district", district)
             .order("created_at", desc=True)
             .limit(limit)
@@ -141,7 +141,7 @@ def get_recent_incidents(limit: int = 50) -> list:
         client = _get_client()
         response = (
             client.table("civic_incidents")
-            .select("incident_type, district, severity, law_matched, pseudonym, created_at")
+            .select("incident_type, district, severity, law, pseudonym, created_at")
             .order("created_at", desc=True)
             .limit(limit)
             .execute()

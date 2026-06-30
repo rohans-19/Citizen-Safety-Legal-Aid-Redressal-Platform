@@ -35,7 +35,7 @@ def inject_spike(count: int = 15):
             "district":      "Bidar",
             "taluk":         random.choice(BIDAR_TALUKS),
             "severity":      round(random.uniform(0.7, 1.0), 2),
-            "law_matched":   "SC/ST Act Section 3(1)(v)",
+            "law":           "SC/ST Act Section 3(1)(v)",
             "pseudonym":     f"CITIZEN-{random.randint(1000, 9999)}",
         })
 

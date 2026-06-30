@@ -48,6 +48,34 @@ export default function ShadowWrapper() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isSecureMode])
 
+  // ── Inactivity timeout to wipe session if left idle (3 minutes) ─────────────
+  useEffect(() => {
+    if (!isSecureMode) return
+
+    let timer = null
+    const timeoutVal = 180000 // 3 minutes
+
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        setIsSecureMode(false)
+        setGestureProgress(0)
+        sessionStorage.clear()
+        console.log('[ShadowWrapper] Session auto-wiped due to inactivity')
+      }, timeoutVal)
+    }
+
+    resetTimer()
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart']
+    events.forEach(name => window.addEventListener(name, resetTimer))
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      events.forEach(name => window.removeEventListener(name, resetTimer))
+    }
+  }, [isSecureMode])
+
   // ── 3-finger hold animation loop ─────────────────────────────────────────
   const startHoldAnimation = useCallback(() => {
     holdStartRef.current = Date.now()

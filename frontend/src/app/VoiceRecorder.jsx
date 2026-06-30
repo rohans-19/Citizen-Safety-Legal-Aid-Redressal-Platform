@@ -28,6 +28,13 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
   const canvasRef        = useRef(null)
   const animFrameRef     = useRef(null)
   const analyserRef      = useRef(null)
+  const audioContextRef  = useRef(null)
+  const transcriptRef    = useRef('')
+
+  const setTranscriptValue = useCallback((value) => {
+    transcriptRef.current = value
+    setTranscript(value)
+  }, [])
 
   // ── Waveform canvas drawing ───────────────────────────────────────────────
   const drawWaveform = useCallback(() => {
@@ -102,16 +109,13 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
                                 : 'en-IN'
 
     recognition.onresult = (e) => {
-      let interimText = ''
-      let finalText   = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const text = e.results[i][0].transcript
-        if (e.results[i].isFinal) finalText += text
-        else interimText += text
+      let fullText = ''
+      for (let i = 0; i < e.results.length; i++) {
+        fullText += `${e.results[i][0].transcript} `
       }
-      const full = (finalText || interimText).trim()
+      const full = fullText.trim()
       if (full) {
-        setTranscript(full)
+        setTranscriptValue(full)
         // Check code words on every update
         const match = checkCodeWords(full)
         if (match.triggered) {
@@ -125,27 +129,42 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
     recognition.onerror = () => { /* silent */ }
     recognition.start()
     return recognition
-  }, [language])
+  }, [language, setTranscriptValue])
 
   // ── Start recording ───────────────────────────────────────────────────────
   const startRecording = useCallback(async () => {
     setErrorMsg('')
     setCodeWordAlert(null)
-    setTranscript('')
+    setTranscriptValue('')
     audioChunksRef.current = []
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setErrorMsg('Audio recording is not supported in this browser. Please type your statement below.')
+        setStatus('error')
+        return
+      }
+      if (!window.MediaRecorder) {
+        setErrorMsg('MediaRecorder is not supported in this browser. Please type your statement below.')
+        setStatus('error')
+        return
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
 
       // Set up Web Audio for waveform
-      const audioCtx = new AudioContext()
-      const source   = audioCtx.createMediaStreamSource(stream)
-      const analyser = audioCtx.createAnalyser()
-      analyser.fftSize = 64
-      source.connect(analyser)
-      analyserRef.current = analyser
-      drawWaveform()
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext
+      if (AudioContextCtor) {
+        const audioCtx = new AudioContextCtor()
+        audioContextRef.current = audioCtx
+        const source   = audioCtx.createMediaStreamSource(stream)
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 64
+        source.connect(analyser)
+        analyserRef.current = analyser
+        drawWaveform()
+      }
 
       // MediaRecorder for capturing audio blob
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -172,7 +191,7 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
         setErrorMsg('Could not start recording. Please check your microphone.')
       }
     }
-  }, [drawWaveform, startTranscription])
+  }, [drawWaveform, startTranscription, setTranscriptValue])
 
   // ── Stop recording and submit ─────────────────────────────────────────────
   const stopRecording = useCallback(async () => {
@@ -186,17 +205,27 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
 
     // Stop media recorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-      await new Promise(resolve => {
+      const stopped = new Promise(resolve => {
         mediaRecorderRef.current.onstop = resolve
       })
+      mediaRecorderRef.current.stop()
+      await stopped
     }
 
     // Stop mic stream
     streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+
+    if (audioContextRef.current) {
+      try { await audioContextRef.current.close() } catch { /* ignore */ }
+      audioContextRef.current = null
+      analyserRef.current = null
+    }
+
+    const finalTranscript = transcriptRef.current.trim()
 
     // Validate non-empty transcript
-    if (!transcript || transcript.trim().length < 3) {
+    if (!finalTranscript || finalTranscript.length < 3) {
       setErrorMsg('No speech detected. Please speak clearly and try again.')
       setStatus('error')
       return
@@ -211,20 +240,26 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
         console.warn('Acoustic threat detection background error:', err)
       })
 
-      const result    = await api.processVoice(audioBlob, transcript, language, district, incidentType)
+      const result    = await api.processVoice(audioBlob, finalTranscript, language, district, incidentType)
       setStatus('idle')
-      if (onResult) onResult(result)
+      if (onResult) onResult(result, { audioBlob, transcript: finalTranscript, language })
     } catch {
       setErrorMsg('Failed to process recording. Please try again.')
       setStatus('error')
     }
-  }, [stopWaveform, transcript, language, district, incidentType, onResult])
+  }, [stopWaveform, language, district, incidentType, onResult])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopWaveform()
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop() } catch { /* ignore */ }
+      }
       streamRef.current?.getTracks().forEach(t => t.stop())
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close() } catch { /* ignore */ }
+      }
     }
   }, [stopWaveform])
 
@@ -264,7 +299,7 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
         <div className="border border-orange-300 bg-orange-50 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-orange-500 text-sm">🔔</span>
           <span className="text-xs text-orange-700">
-            Code word detected: <strong>"{codeWordAlert}"</strong> — silent alert sent.
+            Code word detected: <strong>"{codeWordAlert}"</strong> — safety mode activated on this device.
           </span>
         </div>
       )}
@@ -288,9 +323,10 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
             onClick={async () => {
               setStatus('processing')
               try {
-                const result = await api.processVoice(null, transcript, language, district, incidentType)
+                const finalTranscript = transcriptRef.current.trim()
+                const result = await api.processVoice(null, finalTranscript, language, district, incidentType)
                 setStatus('idle')
-                if (onResult) onResult(result)
+                if (onResult) onResult(result, { audioBlob: null, transcript: finalTranscript, language })
               } catch {
                 setErrorMsg('Failed to process statement. Please try again.')
                 setStatus('error')
@@ -339,7 +375,7 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
         <textarea
           value={transcript}
           onChange={e => {
-            setTranscript(e.target.value)
+            setTranscriptValue(e.target.value)
             const match = checkCodeWords(e.target.value)
             if (match && match.triggered) {
               setCodeWordAlert(match.matchedWord)

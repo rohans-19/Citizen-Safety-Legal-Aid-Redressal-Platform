@@ -35,3 +35,4 @@ backend/generated_pdfs/
 # Server Logs
 backend/server.log
 backend/server_err.log
+frontend/vite*.log

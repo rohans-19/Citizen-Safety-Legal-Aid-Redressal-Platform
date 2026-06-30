@@ -1,10 +1,10 @@
 import pytest
 import os
+import asyncio
 from unittest.mock import patch, MagicMock
 from server.agent_swarm import run_swarm
 
-@pytest.mark.asyncio
-async def test_run_swarm_mocked():
+def test_run_swarm_mocked():
     # Mock Gemini model responses to avoid network requests during local tests
     with patch("server.agent_swarm._GENAI_CLIENT") as mock_client:
         mock_models = MagicMock()
@@ -22,12 +22,12 @@ async def test_run_swarm_mocked():
 
         # We also need to mock _get_genai_client to return our mock_client
         with patch("server.agent_swarm._get_genai_client", return_value=mock_client):
-            res = await run_swarm(
+            res = asyncio.run(run_swarm(
                 transcript="I was denied wage at the farm",
                 incident_type="wage_theft",
                 district="Belagavi",
                 language="en"
-            )
+            ))
             assert res["severity"] == 0.8
             assert res["routing"] == "AUTHORITY"
             assert len(res["evidence_list"]) > 0

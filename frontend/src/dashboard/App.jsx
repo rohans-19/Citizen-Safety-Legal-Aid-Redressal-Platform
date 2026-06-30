@@ -5,9 +5,9 @@
  */
 import React, { useState } from "react";
 import LiveUpdater     from "./LiveUpdater.js";
-import HeatmapLayer    from "./HeatmapLayer.js";
-import AnomalyAlert    from "./AnomalyAlert.js";
-import DistrictTooltip from "./DistrictTooltip.js";
+import HeatmapLayer    from "./HeatmapLayer.jsx";
+import AnomalyAlert    from "./AnomalyAlert.jsx";
+import DistrictTooltip from "./DistrictTooltip.jsx";
 
 // ── Derived stats helpers ──────────────────────────────────────────────────────
 function computeStats(scoreData) {

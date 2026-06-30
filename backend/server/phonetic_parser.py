@@ -210,9 +210,41 @@ for _intent, _terms in INTENT_VOCABULARY.items():
                 _SOUNDEX_INDEX[_code].append(_intent)
 
 
+# ── LLM Fallback Classification ──────────────────────────────────────────────
+
+def _llm_classify(transcript: str) -> str:
+    """Last-resort LLM classification when all heuristic methods fail."""
+    try:
+        from google import genai
+        import os
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
+            return "unknown"
+        client = genai.Client(api_key=api_key)
+        valid_types = list(INTENT_VOCABULARY.keys())
+        prompt = f"""Classify this Indian citizen complaint into EXACTLY one of these categories:
+{', '.join(valid_types)}
+
+Complaint: \"{transcript}\"
+
+Respond with ONLY the category name, nothing else."""
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        result = response.text.strip().lower().replace(" ", "_").replace("-", "_")
+        if result in valid_types:
+            return result
+        # Fuzzy match the LLM output against valid types
+        for vt in valid_types:
+            if vt in result or result in vt:
+                return vt
+        return "unknown"
+    except Exception as e:
+        print(f"[PhoneticParser] LLM classify error: {e}")
+        return "unknown"
+
+
 # ── Main Resolution Function ──────────────────────────────────────────────────
 
-def resolve_intent(raw_transcript: str) -> dict:
+def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
     """
     Takes raw ASR transcript and returns:
       - resolved_text: corrected text
@@ -305,7 +337,26 @@ def resolve_intent(raw_transcript: str) -> dict:
             "method": "levenshtein_fuzzy"
         }
 
-    # Step 5: Total fallback
+    # Step 5: LLM classification as last resort
+    llm_result = _llm_classify(text)
+    if llm_result != "unknown":
+        return {
+            "resolved_text": text,
+            "incident_type": llm_result,
+            "confidence": 0.60,
+            "method": "llm_classification"
+        }
+
+    # Step 6: Use frontend hint if provided
+    if hint and hint != "" and hint != "other":
+        return {
+            "resolved_text": text,
+            "incident_type": hint,
+            "confidence": 0.40,
+            "method": "frontend_hint"
+        }
+
+    # Step 7: Total fallback
     return {
         "resolved_text": text,
         "incident_type": "unknown",

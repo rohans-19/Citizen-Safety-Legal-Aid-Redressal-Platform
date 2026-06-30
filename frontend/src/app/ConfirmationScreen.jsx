@@ -19,6 +19,10 @@ export default function ConfirmationScreen({ data, onReset }) {
     pdf_url,
     complaint_id,
     timestamp,
+    evidence_list,
+    next_action,
+    empathy_message,
+    severity,
     _mock,
   } = data
 
@@ -102,6 +106,38 @@ export default function ConfirmationScreen({ data, onReset }) {
         </div>
       )}
 
+      {/* Evidence Checklist */}
+      {evidence_list && evidence_list.length > 0 && (
+        <div className="border border-gray-200 rounded divide-y divide-gray-100">
+          <div className="px-3 py-2 bg-gray-50">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Evidence to Collect</p>
+          </div>
+          <div className="px-3 py-2.5 space-y-2">
+            {evidence_list.map((item, i) => (
+              <label key={i} className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" className="mt-0.5 accent-blue-600" />
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Next Action */}
+      {next_action && (
+        <div className="border border-blue-200 bg-blue-50 rounded px-4 py-3">
+          <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-1">What To Do Next</p>
+          <p className="text-sm text-blue-900">{next_action}</p>
+        </div>
+      )}
+
+      {/* Empathy Message */}
+      {empathy_message && (
+        <div className="border border-green-200 bg-green-50 rounded px-4 py-3">
+          <p className="text-sm text-green-800 italic">"{empathy_message}"</p>
+        </div>
+      )}
+
       {/* Timestamp */}
       {formattedDate && (
         <p className="text-xs text-gray-400">Filed at: {formattedDate}</p>
@@ -112,8 +148,7 @@ export default function ConfirmationScreen({ data, onReset }) {
         {pdf_url && pdf_url !== '#mock-pdf' ? (
           <a
             href={pdf_url}
-            target="_blank"
-            rel="noreferrer"
+            download={`complaint_${complaint_id || 'report'}.pdf`}
             className="flex items-center gap-1.5 border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-medium px-4 py-2 rounded"
           >
             <span>📄</span> Download PDF

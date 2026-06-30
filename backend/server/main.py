@@ -52,6 +52,7 @@ class VoicePayload(BaseModel):
     transcript: str
     district: str = "Unknown"
     language: str = "kn"          # kn = Kannada, hi = Hindi, en = English
+    incident_type_hint: str = ''  # Frontend dropdown selection as fallback hint
 
 class ZKPPayload(BaseModel):
     commitment: str               # hex string of Pedersen commitment
@@ -122,7 +123,7 @@ async def process_voice(payload: VoicePayload):
     """
     try:
         # Step 1: Correct ASR errors via phonetic parser
-        corrected = resolve_intent(payload.transcript)
+        corrected = resolve_intent(payload.transcript, hint=payload.incident_type_hint)
 
         # Step 2: Run LangGraph swarm
         swarm_result = await run_swarm(
@@ -141,7 +142,8 @@ async def process_voice(payload: VoicePayload):
             district=payload.district,
             law=legal_match,
             narrative=swarm_result.get("narrative", ""),
-            authority=legal_match.get("authority", "District Collector")
+            authority=legal_match.get("authority", "District Collector"),
+            raw_transcript=payload.transcript
         )
         pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
@@ -157,13 +159,17 @@ async def process_voice(payload: VoicePayload):
         return {
             "success": True,
             "corrected_transcript": corrected["resolved_text"],
-            "incident_type": corrected["incident_type"],
+            "incident_type": corrected["incident_type"] if corrected["incident_type"] != "unknown" else "under_review",
             "law_matched": legal_match,
             "authority": legal_match.get("authority"),
             "pdf_filename": filename,
             "pdf_base64": pdf_base64,
             "routing": swarm_result.get("routing"),
-            "pseudonym": swarm_result.get("pseudonym")
+            "pseudonym": swarm_result.get("pseudonym"),
+            "evidence_list": swarm_result.get("evidence_list", []),
+            "next_action": swarm_result.get("next_action", ""),
+            "empathy_message": swarm_result.get("empathy_message", ""),
+            "severity": swarm_result.get("severity", 0.5),
         }
 
     except Exception as e:

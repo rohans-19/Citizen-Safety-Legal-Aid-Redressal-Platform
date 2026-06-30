@@ -14,7 +14,7 @@ const LANGUAGES = [
  * Props:
  *   onResult(data) — called with API response after processing
  */
-export default function VoiceRecorder({ onResult, district }) {
+export default function VoiceRecorder({ onResult, district, incidentType }) {
   const [status, setStatus]             = useState('idle')     // idle | recording | processing | error
   const [transcript, setTranscript]     = useState('')
   const [language, setLanguage]         = useState('kn')
@@ -195,6 +195,13 @@ export default function VoiceRecorder({ onResult, district }) {
     // Stop mic stream
     streamRef.current?.getTracks().forEach(t => t.stop())
 
+    // Validate non-empty transcript
+    if (!transcript || transcript.trim().length < 3) {
+      setErrorMsg('No speech detected. Please speak clearly and try again.')
+      setStatus('error')
+      return
+    }
+
     // Submit to backend
     try {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
@@ -204,14 +211,14 @@ export default function VoiceRecorder({ onResult, district }) {
         console.warn('Acoustic threat detection background error:', err)
       })
 
-      const result    = await api.processVoice(audioBlob, transcript, language, district)
+      const result    = await api.processVoice(audioBlob, transcript, language, district, incidentType)
       setStatus('idle')
       if (onResult) onResult(result)
     } catch {
       setErrorMsg('Failed to process recording. Please try again.')
       setStatus('error')
     }
-  }, [stopWaveform, transcript, language, district, onResult])
+  }, [stopWaveform, transcript, language, district, incidentType, onResult])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -281,7 +288,7 @@ export default function VoiceRecorder({ onResult, district }) {
             onClick={async () => {
               setStatus('processing')
               try {
-                const result = await api.processVoice(null, transcript, language, district)
+                const result = await api.processVoice(null, transcript, language, district, incidentType)
                 setStatus('idle')
                 if (onResult) onResult(result)
               } catch {

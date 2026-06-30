@@ -26,7 +26,8 @@ def build_pdf(
     narrative: str,
     authority: str,
     complainant_id: str = "Anonymous Citizen",
-    date_override: Optional[str] = None
+    date_override: Optional[str] = None,
+    raw_transcript: str = ''
 ) -> Tuple[bytes, str]:
     """
     Builds a formal legal complaint PDF in-memory.
@@ -45,7 +46,7 @@ def build_pdf(
     """
     if not REPORTLAB_AVAILABLE:
         # Fallback: write a .txt complaint if reportlab not installed
-        return _build_txt_fallback(incident_type, district, law, narrative, authority, complainant_id)
+        return _build_txt_fallback(incident_type, district, law, narrative, authority, complainant_id, raw_transcript)
 
     date_str = date_override or datetime.now().strftime("%d %B %Y")
     filename = f"complaint_{incident_type}_{district}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
@@ -76,7 +77,7 @@ def build_pdf(
         ["Date", date_str],
         ["Complainant", complainant_id],
         ["District", district],
-        ["Incident Type", incident_type.replace("_", " ").title()],
+        ["Incident Type", incident_type.replace("_", " ").title() if incident_type != "unknown" else "Under Review"],
         ["To", authority or law.get("authority", "District Collector")],
     ]
     meta_table = Table(meta_data, colWidths=[4 * cm, 13 * cm])
@@ -91,7 +92,8 @@ def build_pdf(
     story.append(Spacer(1, 0.5 * cm))
 
     # ── Subject Line ──────────────────────────────────────────────────────────
-    subject = f"Subject: Complaint regarding {incident_type.replace('_', ' ').title()} — {law.get('act', '')}"
+    incident_display = incident_type.replace('_', ' ').title() if incident_type != 'unknown' else 'Under Review'
+    subject = f"Subject: Complaint regarding {incident_display} — {law.get('act', '')}"
     story.append(Paragraph(subject, _style(styles, "Normal", fontSize=11, bold=True, spaceAfter=8)))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.lightgrey))
     story.append(Spacer(1, 0.3 * cm))
@@ -102,6 +104,15 @@ def build_pdf(
     # ── Narrative ─────────────────────────────────────────────────────────────
     story.append(Paragraph("Statement of Facts", _style(styles, "Heading2", fontSize=12, spaceAfter=4)))
     story.append(Paragraph(narrative or "Details of the incident as narrated by the complainant.", _style(styles, "Normal", fontSize=10.5, spaceAfter=12)))
+
+    # ── Complainant's Own Words ───────────────────────────────────────────
+    if raw_transcript and raw_transcript.strip():
+        story.append(Spacer(1, 0.3 * cm))
+        story.append(Paragraph("Complainant's Own Words (Verbatim)", _style(styles, "Heading2", fontSize=12, spaceAfter=4)))
+        story.append(Paragraph(
+            f'"<i>{raw_transcript.strip()}</i>"',
+            _style(styles, "Normal", fontSize=10.5, spaceAfter=12)
+        ))
 
     # ── Legal Provisions ──────────────────────────────────────────────────────
     story.append(Paragraph("Applicable Legal Provisions", _style(styles, "Heading2", fontSize=12, spaceAfter=4)))
@@ -167,10 +178,15 @@ def _style(styles, name, fontSize=10, bold=False, spaceAfter=6, color=None):
     )
 
 
-def _build_txt_fallback(incident_type, district, law, narrative, authority, complainant_id) -> Tuple[bytes, str]:
+def _build_txt_fallback(incident_type, district, law, narrative, authority, complainant_id, raw_transcript='') -> Tuple[bytes, str]:
     """Fallback plain-text complaint when ReportLab is not installed."""
     date_str = datetime.now().strftime("%d %B %Y")
     filename = f"complaint_{incident_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    incident_display = incident_type.replace('_', ' ').title() if incident_type != 'unknown' else 'Under Review'
+
+    verbatim_section = ""
+    if raw_transcript and raw_transcript.strip():
+        verbatim_section = f"\nCOMPLAINANT'S OWN WORDS (VERBATIM):\n\"{raw_transcript.strip()}\"\n"
 
     content = f"""CIVIC-SHIELD — LEGAL COMPLAINT
 {'='*60}
@@ -179,14 +195,14 @@ Complainant: {complainant_id}
 District: {district}
 To: {authority}
 
-INCIDENT: {incident_type.replace('_', ' ').title()}
+INCIDENT: {incident_display}
 
 APPLICABLE LAW: {law.get('act', 'N/A')}
 SECTIONS: {', '.join(law.get('sections', []))}
 
 STATEMENT OF FACTS:
 {narrative}
-
+{verbatim_section}
 RELIEF SOUGHT:
 {chr(10).join('• ' + r for r in law.get('relief_types', []))}
 

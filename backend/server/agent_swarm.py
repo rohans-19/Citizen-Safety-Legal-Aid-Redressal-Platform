@@ -156,8 +156,13 @@ Write the formal narrative:"""
 
     narrative = _call_gemini(
         prompt,
-        f"The complainant reports an incident of {state['incident_type']} in {state['district']} district."
+        f"The complainant states: \"{state['transcript']}\". This incident occurred in {state['district']} district and requires investigation by the appropriate authorities."
     )
+
+    # Guard: never let 'unknown' appear as incident description in narrative
+    if state['incident_type'] == 'unknown' and 'unknown' in narrative.lower():
+        narrative = f"The complainant states: \"{state['transcript']}\". The exact legal classification is under review. This incident occurred in {state['district']} district and requires urgent attention from the appropriate authorities."
+
     pseudonym = "Citizen-" + uuid.uuid4().hex[:4].upper()
     return {**state, "narrative": narrative, "pseudonym": pseudonym}
 

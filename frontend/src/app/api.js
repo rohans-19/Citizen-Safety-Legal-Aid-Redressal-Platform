@@ -35,6 +35,9 @@ const MOCK = {
     pdf_url:       null,   // no real PDF in mock mode
     complaint_id:  'MOCK-' + Math.floor(Math.random() * 90000 + 10000),
     timestamp:     new Date().toISOString(),
+    evidence_list: ['Photo of incident location', 'Names of witnesses', 'Date and time notes', 'Any written notices', 'Medical records if injured'],
+    next_action:   'Visit the District Collector office with your complaint documents.',
+    empathy_message: 'We have received your complaint. You are not alone — help is on the way.',
     _mock:         true,
   },
   detectThreat: {
@@ -71,7 +74,7 @@ export const api = {
    * POST /process-voice
    * Sends JSON payload with transcript to the backend agent swarm
    */
-  async processVoice(audioBlob, transcript, language = 'kn', district = '') {
+  async processVoice(audioBlob, transcript, language = 'kn', district = '', incidentType = '') {
     const data = await callApi(
       `${BACKEND_URL}/process-voice`,
       {
@@ -81,6 +84,7 @@ export const api = {
           transcript: transcript,
           district:   district || 'Unknown',
           language:   language,
+          incident_type_hint: incidentType || '',
         })
       },
       MOCK.processVoice
@@ -114,16 +118,20 @@ export const api = {
 
       // Map backend response keys to frontend keys expected by ConfirmationScreen.jsx
       return {
-        incident_type: data.incident_type || '',
-        law_matched:   formattedLaw,
-        district:      district || 'Unknown',
-        taluk:         '',
-        routed_to:     data.routing || '',
-        authority:     data.authority || '',
-        pdf_url:       pdfBlobUrl,
-        complaint_id:  data.pseudonym || 'CS-' + Math.floor(Math.random() * 90000 + 10000),
-        timestamp:     new Date().toISOString(),
-        _mock:         false
+        incident_type:   data.incident_type || '',
+        law_matched:     formattedLaw,
+        district:        district || 'Unknown',
+        taluk:           '',
+        routed_to:       data.routing || '',
+        authority:       data.authority || '',
+        pdf_url:         pdfBlobUrl,
+        complaint_id:    data.pseudonym || 'CS-' + Math.floor(Math.random() * 90000 + 10000),
+        timestamp:       new Date().toISOString(),
+        evidence_list:   data.evidence_list || [],
+        next_action:     data.next_action || '',
+        empathy_message: data.empathy_message || '',
+        severity:        data.severity || 0.5,
+        _mock:           false
       }
     }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import VoiceRecorder from './VoiceRecorder.jsx'
 import ConfirmationScreen from './ConfirmationScreen.jsx'
 
@@ -32,6 +32,29 @@ export default function ReportScreen() {
   const [incidentType, setIncidentType] = useState('')
   const [district,    setDistrict]    = useState('')
 
+  // Auto-detect district via geolocation
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`)
+          const data = await res.json()
+          const state_district = data.address?.state_district || data.address?.county || ''
+          // Try to match against Karnataka districts
+          const matched = KARNATAKA_DISTRICTS.find(d => 
+            state_district.toLowerCase().includes(d.toLowerCase()) ||
+            d.toLowerCase().includes(state_district.toLowerCase().replace(' district', ''))
+          )
+          if (matched) setDistrict(matched)
+        } catch { /* silent */ }
+      },
+      () => { /* permission denied — silent */ },
+      { timeout: 5000 }
+    )
+  }, [])
+
   const handleResult = (data) => {
     setResult(data)
   }
@@ -62,23 +85,11 @@ export default function ReportScreen() {
         </p>
       </div>
 
-      {/* Step 1 — Voice */}
+      {/* Step 1 — Select Details */}
       <div className="border border-gray-200 rounded">
         <div className="px-3 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
           <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-semibold">1</span>
-          <span className="text-sm font-medium text-gray-700">Record Your Statement</span>
-        </div>
-        <div className="p-4">
-          <VoiceRecorder onResult={handleResult} district={district} />
-        </div>
-      </div>
-
-      {/* Step 2 — Optional metadata */}
-      <div className="border border-gray-200 rounded">
-        <div className="px-3 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-gray-400 text-white text-xs flex items-center justify-center font-semibold">2</span>
-          <span className="text-sm font-medium text-gray-700">Additional Details</span>
-          <span className="text-xs text-gray-400">(Optional — AI fills these from your voice)</span>
+          <span className="text-sm font-medium text-gray-700">Select Details</span>
         </div>
         <div className="p-4 grid grid-cols-2 gap-3">
           <div>
@@ -112,6 +123,17 @@ export default function ReportScreen() {
               ))}
             </select>
           </div>
+        </div>
+      </div>
+
+      {/* Step 2 — Voice */}
+      <div className="border border-gray-200 rounded">
+        <div className="px-3 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-semibold">2</span>
+          <span className="text-sm font-medium text-gray-700">Record Your Statement</span>
+        </div>
+        <div className="p-4">
+          <VoiceRecorder onResult={handleResult} district={district} incidentType={incidentType} />
         </div>
       </div>
 

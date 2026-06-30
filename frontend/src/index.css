@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;
+  color: #1e293b;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection during gesture holds */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Canvas waveform */
+canvas {
+  display: block;
+}
+
+/* Smooth screen transitions */
+.screen-fade {
+  animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Threat banner slide-down */
+.threat-banner {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Gesture ring progress */
+.gesture-ring {
+  transition: stroke-dashoffset 0.05s linear;
+}

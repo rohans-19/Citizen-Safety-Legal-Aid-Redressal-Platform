@@ -1,0 +1,5 @@
+{
+  "name": "civic-shield-monorepo",
+  "private": true,
+  "description": "CIVIC-SHIELD monorepo root — see frontend/ and backend/ for deployable units"
+}

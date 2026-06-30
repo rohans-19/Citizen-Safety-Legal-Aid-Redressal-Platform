@@ -8,11 +8,11 @@ pydantic==2.7.2
 supabase==2.5.0
 
 # Google Gemini
-google-generativeai==0.7.2
+google-genai
 
 # LangGraph agent swarm
 langgraph==0.1.14
-langchain-core==0.2.10
+langchain-core>=0.2.22
 
 # PDF generation
 reportlab==4.2.0

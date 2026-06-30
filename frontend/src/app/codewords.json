@@ -1,0 +1,12 @@
+{
+  "english": [
+    "help me", "in danger", "call police", "i need help", "order food",
+    "book a table", "call doctor", "send food", "get food", "hurry up"
+  ],
+  "kannada": [
+    "ಊಟ ಆರ್ಡರ್", "ಸಹಾಯ ಮಾಡಿ", "ಅಪಾಯ", "ಪೊಲೀಸ್ ಕರೆ", "ಸಹಾಯ ಬೇಕು"
+  ],
+  "hindi": [
+    "मदद करो", "खाना मंगाओ", "खतरा है", "पुलिस बुलाओ", "मुझे मदद चाहिए"
+  ]
+}

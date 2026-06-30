@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
@@ -40,6 +41,10 @@ try:
     app.mount("/analytics", analytics_app)
 except Exception as e:
     print(f"[Warning] Failed to mount analytics sub-app: {e}")
+
+# ── Static Files ─────────────────────────────────────────────────────────────
+os.makedirs("generated_pdfs", exist_ok=True)
+app.mount("/generated_pdfs", StaticFiles(directory="generated_pdfs"), name="generated_pdfs")
 
 # ── Request / Response Models ─────────────────────────────────────────────────
 

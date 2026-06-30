@@ -246,19 +246,19 @@ def _build_graph() -> object:
     graph = StateGraph(SwarmState)
 
     # Register nodes
-    graph.add_node("triage", triage_agent)
-    graph.add_node("narrative", narrative_agent)
-    graph.add_node("evidence", evidence_agent)
-    graph.add_node("routing", routing_agent)
-    graph.add_node("empathy", empathy_agent)
+    graph.add_node("triage_node", triage_agent)
+    graph.add_node("narrative_node", narrative_agent)
+    graph.add_node("evidence_node", evidence_agent)
+    graph.add_node("routing_node", routing_agent)
+    graph.add_node("empathy_node", empathy_agent)
 
     # Define flow
-    graph.set_entry_point("triage")
-    graph.add_edge("triage", "narrative")
-    graph.add_edge("narrative", "evidence")
-    graph.add_edge("evidence", "routing")
-    graph.add_edge("routing", "empathy")
-    graph.add_edge("empathy", END)
+    graph.set_entry_point("triage_node")
+    graph.add_edge("triage_node", "narrative_node")
+    graph.add_edge("narrative_node", "evidence_node")
+    graph.add_edge("evidence_node", "routing_node")
+    graph.add_edge("routing_node", "empathy_node")
+    graph.add_edge("empathy_node", END)
 
     return graph.compile()
 

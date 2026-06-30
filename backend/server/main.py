@@ -63,7 +63,43 @@ class IncidentLog(BaseModel):
 def health():
     return {"status": "ok", "service": "CIVIC-SHIELD Backend v1.0"}
 
+# ── Simple IP-Based Rate Limiting Middleware ─────────────────────────────────
+import time
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+# Store IP request counts: {ip: [timestamp1, timestamp2, ...]}
+_RATE_LIMIT_DB = {}
+_LIMIT_WINDOW_SEC = 60
+_MAX_REQUESTS_PER_WINDOW = 30
+
+@app.middleware("http")
+async def rate_limiter(request: Request, call_next):
+    # Exclude health check from rate limiting
+    if request.url.path == "/health":
+        return await call_next(request)
+        
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # Initialize list for new IP
+    if client_ip not in _RATE_LIMIT_DB:
+        _RATE_LIMIT_DB[client_ip] = []
+        
+    # Remove timestamps older than the window
+    _RATE_LIMIT_DB[client_ip] = [t for t in _RATE_LIMIT_DB[client_ip] if now - t < _LIMIT_WINDOW_SEC]
+    
+    if len(_RATE_LIMIT_DB[client_ip]) >= _MAX_REQUESTS_PER_WINDOW:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too Many Requests. Rate limit exceeded (30 requests/min)."}
+        )
+        
+    _RATE_LIMIT_DB[client_ip].append(now)
+    return await call_next(request)
+
 # ── Core Voice Processing ─────────────────────────────────────────────────────
+import base64
 
 @app.post("/process-voice", tags=["Core"])
 async def process_voice(payload: VoicePayload):
@@ -72,9 +108,9 @@ async def process_voice(payload: VoicePayload):
     1. Phonetic parser corrects ASR errors in transcript
     2. LangGraph swarm processes corrected intent
     3. Legal graph traversal returns matched law + authority
-    4. PDF complaint generated
+    4. PDF complaint generated in-memory (returned as Base64)
     5. Incident logged to Supabase (anonymized)
-    Returns: law match, authority, PDF path, routing decision
+    Returns: law match, authority, PDF Base64 string, routing decision
     """
     try:
         # Step 1: Correct ASR errors via phonetic parser
@@ -91,14 +127,15 @@ async def process_voice(payload: VoicePayload):
         # Step 3: Traverse legal graph for deterministic law matching
         legal_match = traverse_legal_graph(corrected["incident_type"])
 
-        # Step 4: Build PDF complaint
-        pdf_path = build_pdf(
+        # Step 4: Build PDF complaint strictly in-memory (PII protection)
+        pdf_bytes, filename = build_pdf(
             incident_type=corrected["incident_type"],
             district=payload.district,
             law=legal_match,
             narrative=swarm_result.get("narrative", ""),
             authority=legal_match.get("authority", "District Collector")
         )
+        pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
         # Step 5: Log anonymized incident to Supabase
         await log_incident(IncidentLog(
@@ -115,7 +152,8 @@ async def process_voice(payload: VoicePayload):
             "incident_type": corrected["incident_type"],
             "law_matched": legal_match,
             "authority": legal_match.get("authority"),
-            "pdf_path": pdf_path,
+            "pdf_filename": filename,
+            "pdf_base64": pdf_base64,
             "routing": swarm_result.get("routing"),
             "pseudonym": swarm_result.get("pseudonym")
         }

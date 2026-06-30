@@ -110,13 +110,20 @@ REASON: one sentence
     
     for line in result.split("\n"):
         line = line.strip()
-        if line.startswith("SEVERITY:"):
+        if not line:
+            continue
+        # Case-insensitive checking
+        upper_line = line.upper()
+        if upper_line.startswith("SEVERITY:"):
             try:
                 severity = float(line.split(":")[1].strip())
             except Exception:
                 pass
-        elif line.startswith("ROUTING:"):
-            routing = line.split(":")[1].strip()
+        elif upper_line.startswith("ROUTING:"):
+            try:
+                routing = line.split(":")[1].strip().upper()
+            except Exception:
+                pass
 
     return {**state, "severity": severity, "routing": routing}
 

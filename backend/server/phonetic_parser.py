@@ -14,6 +14,22 @@ import re
 import unicodedata
 from typing import Optional
 
+# Common English stopwords to ignore in Soundex phonetic mapping
+STOPWORDS = {
+    "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", 
+    "are", "because", "been", "before", "being", "below", "between", "both", "but", 
+    "by", "cannot", "could", "did", "do", "does", "doing", "down", "during", "each", 
+    "few", "for", "from", "further", "had", "has", "have", "having", "here", "how", 
+    "if", "in", "into", "is", "it", "its", "itself", "me", "more", "most", "my", 
+    "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", 
+    "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "she", 
+    "should", "so", "some", "such", "than", "that", "the", "their", "theirs", 
+    "them", "themselves", "then", "there", "these", "they", "this", "those", 
+    "through", "to", "too", "under", "until", "up", "very", "was", "we", "were", 
+    "what", "when", "where", "which", "while", "who", "whom", "why", "with", 
+    "would", "you", "your", "yours", "yourself", "yourselves", "wouldnt"
+}
+
 # ── Intent Vocabulary ─────────────────────────────────────────────────────────
 # Maps canonical intent keys to lists of phonetic variants and trigger phrases
 
@@ -249,7 +265,7 @@ def resolve_intent(raw_transcript: str) -> dict:
     words = re.findall(r'\b\w+\b', text)
     soundex_scores: dict[str, int] = {}
     for word in words:
-        if len(word) < 4:
+        if len(word) < 4 or word in STOPWORDS:
             continue
         code = indian_soundex(word)
         if code in _SOUNDEX_INDEX:

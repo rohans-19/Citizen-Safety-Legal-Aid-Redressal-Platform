@@ -73,7 +73,7 @@ async def log_incident(payload) -> str:
             "pseudonym": payload.pseudonym or generate_pseudonym(),
             "created_at": datetime.utcnow().isoformat()
         }
-        response = client.table("incidents").insert(record).execute()
+        response = client.table("civic_incidents").insert(record).execute()
         if response.data:
             return response.data[0].get("id", "unknown")
         return "inserted"
@@ -90,7 +90,7 @@ def get_incidents_by_district(district: str, limit: int = 100) -> list:
     try:
         client = _get_client()
         response = (
-            client.table("incidents")
+            client.table("civic_incidents")
             .select("incident_type, district, taluk, severity, law_matched, created_at")
             .eq("district", district)
             .order("created_at", desc=True)
@@ -118,7 +118,7 @@ def get_district_summary() -> list:
         print(f"[Supabase] district_summary RPC failed, using fallback: {e}")
         try:
             client = _get_client()
-            response = client.table("incidents").select("district, incident_type, severity").execute()
+            response = client.table("civic_incidents").select("district, incident_type, severity").execute()
             data = response.data or []
             summary: dict = {}
             for row in data:
@@ -140,7 +140,7 @@ def get_recent_incidents(limit: int = 50) -> list:
     try:
         client = _get_client()
         response = (
-            client.table("incidents")
+            client.table("civic_incidents")
             .select("incident_type, district, severity, law_matched, pseudonym, created_at")
             .order("created_at", desc=True)
             .limit(limit)
@@ -156,7 +156,7 @@ def health_check() -> bool:
     """Quick connectivity check to Supabase."""
     try:
         client = _get_client()
-        client.table("incidents").select("id").limit(1).execute()
+        client.table("civic_incidents").select("id").limit(1).execute()
         return True
     except Exception:
         return False

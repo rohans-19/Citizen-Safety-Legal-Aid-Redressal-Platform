@@ -4,8 +4,8 @@
 -- Run this in Supabase SQL Editor
 -- ============================================================
 
--- 1. INCIDENTS TABLE (core data store)
-CREATE TABLE IF NOT EXISTS incidents (
+-- 1. CIVIC_INCIDENTS TABLE (core data store)
+CREATE TABLE IF NOT EXISTS civic_incidents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     incident_type TEXT NOT NULL,
     district TEXT NOT NULL,
@@ -17,20 +17,20 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 
 -- Index for fast district queries (heatmap)
-CREATE INDEX IF NOT EXISTS idx_incidents_district ON incidents(district);
-CREATE INDEX IF NOT EXISTS idx_incidents_type ON incidents(incident_type);
-CREATE INDEX IF NOT EXISTS idx_incidents_created ON incidents(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_civic_incidents_district ON civic_incidents(district);
+CREATE INDEX IF NOT EXISTS idx_civic_incidents_type ON civic_incidents(incident_type);
+CREATE INDEX IF NOT EXISTS idx_civic_incidents_created ON civic_incidents(created_at DESC);
 
 -- 2. ENABLE ROW LEVEL SECURITY (allow anonymous inserts for field reporting)
-ALTER TABLE incidents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE civic_incidents ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow anonymous insert"
-ON incidents FOR INSERT
+ON civic_incidents FOR INSERT
 TO anon
 WITH CHECK (true);
 
 CREATE POLICY "Allow anonymous select"
-ON incidents FOR SELECT
+ON civic_incidents FOR SELECT
 TO anon
 USING (true);
 
@@ -44,13 +44,13 @@ AS $$
         COUNT(*) as count,
         AVG(severity) as avg_severity,
         MAX(created_at) as latest
-    FROM incidents
+    FROM civic_incidents
     GROUP BY district
     ORDER BY count DESC;
 $$;
 
 -- 4. SEED SAMPLE DATA (for demo / dashboard testing)
-INSERT INTO incidents (incident_type, district, taluk, severity, law_matched, pseudonym) VALUES
+INSERT INTO civic_incidents (incident_type, district, taluk, severity, law_matched, pseudonym) VALUES
 ('caste_discrimination', 'Belagavi', 'Bailhongal', 0.85, 'SC/ST Prevention of Atrocities Act', 'Citizen-A1B2'),
 ('domestic_violence', 'Mysuru', 'Nanjangud', 0.72, 'PWDV Act 2005', 'Citizen-C3D4'),
 ('wage_theft', 'Bengaluru Urban', 'Yelahanka', 0.60, 'Payment of Wages Act', 'Citizen-E5F6'),
@@ -63,4 +63,4 @@ INSERT INTO incidents (incident_type, district, taluk, severity, law_matched, ps
 ('land_encroachment', 'Shivamogga', 'Tirthahalli', 0.75, 'Forest Rights Act 2006', 'Citizen-S9T0');
 
 -- Verify
-SELECT COUNT(*) as total_incidents, COUNT(DISTINCT district) as districts FROM incidents;
+SELECT COUNT(*) as total_incidents, COUNT(DISTINCT district) as districts FROM civic_incidents;

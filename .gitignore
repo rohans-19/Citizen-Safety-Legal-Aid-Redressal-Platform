@@ -1,4 +1,4 @@
-﻿# Environment
+# Environment
 .env
 *.env
 
@@ -28,3 +28,10 @@ Thumbs.db
 
 # Claude AI internal settings
 .claude/
+
+# Generated Complaint PDFs
+backend/generated_pdfs/
+
+# Server Logs
+backend/server.log
+backend/server_err.log

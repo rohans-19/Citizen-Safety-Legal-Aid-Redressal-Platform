@@ -233,6 +233,8 @@ for _intent, _terms in INTENT_VOCABULARY.items():
     for _term in _terms:
         for _word in _term.split():
             _code = indian_soundex(_word)
+            if not _code:
+                continue
             if _code not in _SOUNDEX_INDEX:
                 _SOUNDEX_INDEX[_code] = []
             if _intent not in _SOUNDEX_INDEX[_code]:
@@ -419,6 +421,8 @@ def resolve_intent(raw_transcript: str, hint: str = '') -> dict:
         if len(word) < 4 or word in STOPWORDS:
             continue
         code = indian_soundex(word)
+        if not code:
+            continue
         if code in _SOUNDEX_INDEX:
             for intent in _SOUNDEX_INDEX[code]:
                 soundex_scores[intent] = soundex_scores.get(intent, 0) + 1

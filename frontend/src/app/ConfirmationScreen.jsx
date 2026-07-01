@@ -112,8 +112,7 @@ export default function ConfirmationScreen({ data, onReset }) {
         {pdf_url && pdf_url !== '#mock-pdf' ? (
           <a
             href={pdf_url}
-            target="_blank"
-            rel="noreferrer"
+            download={`complaint_${complaint_id || 'report'}.pdf`}
             className="flex items-center gap-1.5 border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm font-medium px-4 py-2 rounded"
           >
             <span>📄</span> Download PDF

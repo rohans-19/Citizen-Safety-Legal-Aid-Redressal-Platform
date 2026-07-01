@@ -7,6 +7,13 @@ const LANGUAGES = [
   { code: 'kn', label: 'ಕನ್ನಡ (Kannada)' },
   { code: 'hi', label: 'हिंदी (Hindi)'   },
   { code: 'en', label: 'English'          },
+  { code: 'te', label: 'తెలుగు (Telugu)' },
+  { code: 'ta', label: 'தமிழ் (Tamil)' },
+  { code: 'mr', label: 'मराठी (Marathi)' },
+  { code: 'ml', label: 'മലയാളം (Malayalam)' },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ (Punjabi)' },
+  { code: 'bn', label: 'বাংলা (Bengali)' },
+  { code: 'or', label: 'ଓಡ଼ಿଆ (Odia)' },
 ]
 
 /**
@@ -106,6 +113,13 @@ export default function VoiceRecorder({ onResult, district, incidentType }) {
     recognition.interimResults = true
     recognition.lang           = language === 'kn' ? 'kn-IN'
                                 : language === 'hi' ? 'hi-IN'
+                                : language === 'te' ? 'te-IN'
+                                : language === 'ta' ? 'ta-IN'
+                                : language === 'mr' ? 'mr-IN'
+                                : language === 'ml' ? 'ml-IN'
+                                : language === 'pa' ? 'pa-IN'
+                                : language === 'bn' ? 'bn-IN'
+                                : language === 'or' ? 'or-IN'
                                 : 'en-IN'
 
     recognition.onresult = (e) => {

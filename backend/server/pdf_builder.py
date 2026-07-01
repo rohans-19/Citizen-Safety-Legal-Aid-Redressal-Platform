@@ -14,7 +14,7 @@ try:
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
     from reportlab.lib import colors
-    REPORTLAB_AVAILABLE = True
+    REPORTLAB_AVAILABLE = True  # verified available in python env
 except ImportError:
     REPORTLAB_AVAILABLE = False
 

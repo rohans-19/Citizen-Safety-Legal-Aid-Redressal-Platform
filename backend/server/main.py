@@ -165,6 +165,7 @@ async def process_voice(payload: VoicePayload):
             law=legal_match,
             narrative=swarm_result.get("narrative", ""),
             authority=legal_match.get("authority", "District Collector"),
+            complainant_id=swarm_result.get("pseudonym", "Anonymous Citizen"),
             raw_transcript=payload.transcript
         )
         pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")

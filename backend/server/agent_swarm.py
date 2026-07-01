@@ -10,7 +10,7 @@ LangGraph multi-agent orchestration swarm — Innovation #6.
   5. Empathy Agent    → generates a human message in the user's language
 
 Flow: Triage → Narrative → Evidence → Routing → Empathy
-All agents use Gemini 1.5 Flash for speed.
+All agents use Groq (llama-3.3-70b-versatile) for fast, free inference.
 """
 import os
 import uuid
@@ -21,21 +21,21 @@ from dotenv import load_dotenv
 # Explicit path so it works regardless of working directory
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-from google import genai
+from groq import Groq
 from langgraph.graph import StateGraph, END
 
-# ── Gemini Setup (lazy — initialized on first call) ───────────────────────────
-_GENAI_CLIENT = None
-_MODEL_NAME = "gemini-2.0-flash"
+# ── Groq Setup (lazy — initialized on first call) ─────────────────────────────
+_GROQ_CLIENT = None
+_MODEL_NAME = "llama-3.3-70b-versatile"
 
-def _get_genai_client():
-    global _GENAI_CLIENT
-    if _GENAI_CLIENT is None:
-        api_key = os.getenv("GEMINI_API_KEY", "")
+def _get_groq_client():
+    global _GROQ_CLIENT
+    if _GROQ_CLIENT is None:
+        api_key = os.getenv("GROQ_API_KEY", "")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY not set in backend/.env")
-        _GENAI_CLIENT = genai.Client(api_key=api_key)
-    return _GENAI_CLIENT
+            raise ValueError("GROQ_API_KEY not set in backend/.env")
+        _GROQ_CLIENT = Groq(api_key=api_key)
+    return _GROQ_CLIENT
 
 LANGUAGE_NAMES = {
     "kn": "Kannada",
@@ -54,6 +54,7 @@ class SwarmState(TypedDict):
     incident_type: str
     district: str
     language: str
+    legal_match: dict
 
     # Populated by agents
     severity: float
@@ -65,24 +66,27 @@ class SwarmState(TypedDict):
     pseudonym: str
 
 
-# ── Utility: Call Gemini safely ───────────────────────────────────────────────
+# ── Utility: Call Groq safely ─────────────────────────────────────────────────
 
 def _call_gemini(prompt: str, fallback: str = "") -> str:
+    """Calls Groq LLM. Named _call_gemini for compatibility with existing agent code."""
     try:
-        client = _get_genai_client()
-        response = client.models.generate_content(
+        client = _get_groq_client()
+        response = client.chat.completions.create(
             model=_MODEL_NAME,
-            contents=prompt
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=512,
+            temperature=0.3,
         )
-        return response.text.strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         err_msg = str(e)
-        if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-            print("[Gemini] API Quota Exceeded (429). Using graceful fallback response.")
-        elif "API key not valid" in err_msg or "INVALID_ARGUMENT" in err_msg:
-            print("[Gemini] Invalid API Key. Using graceful fallback response.")
+        if "429" in err_msg or "rate_limit" in err_msg.lower():
+            print("[Groq] Rate limit hit. Using graceful fallback response.")
+        elif "invalid_api_key" in err_msg.lower() or "401" in err_msg:
+            print("[Groq] Invalid API Key. Using graceful fallback response.")
         else:
-            print(f"[Gemini] Error: {err_msg[:200]}")
+            print(f"[Groq] Error: {err_msg[:200]}")
         return fallback
 
 
@@ -278,7 +282,8 @@ async def run_swarm(
     transcript: str,
     incident_type: str,
     district: str,
-    language: str = "kn"
+    language: str = "kn",
+    legal_match: dict = None
 ) -> dict:
     """
     Runs the full 5-agent LangGraph swarm asynchronously.
@@ -288,9 +293,10 @@ async def run_swarm(
         incident_type: Canonical incident key from phonetic_parser
         district: District name (e.g. "Belagavi")
         language: ISO 639-1 language code
+        legal_match: Pre-resolved legal knowledge graph node (optional)
 
     Returns:
-        dict with severity, routing, narrative, evidence_list, 
+        dict with severity, routing, narrative, evidence_list,
         next_action, empathy_message, pseudonym
     """
     initial_state: SwarmState = {
@@ -298,6 +304,7 @@ async def run_swarm(
         "incident_type": incident_type,
         "district": district,
         "language": language,
+        "legal_match": legal_match or {},
         "severity": 0.5,
         "routing": "AUTHORITY",
         "narrative": "",

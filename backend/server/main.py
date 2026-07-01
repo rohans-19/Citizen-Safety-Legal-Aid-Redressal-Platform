@@ -66,9 +66,9 @@ if os.getenv("ENABLE_PDF_FILE_SERVE", "false").lower() == "true":
 # ── Request / Response Models ─────────────────────────────────────────────────
 
 class VoicePayload(BaseModel):
-    transcript: str = Field(..., min_length=3, max_length=5000)
+    transcript: str = Field(..., min_length=1, max_length=5000)
     district: str = Field(default="Unknown", max_length=80)
-    language: str = Field(default="kn", pattern="^(kn|hi|en|te|ta|mr)$")
+    language: str = Field(default="kn", pattern="^(kn|hi|en|te|ta|mr|ml|pa|bn|or)$")
     incident_type_hint: str = Field(default="", max_length=80)
 
 class ZKPPayload(BaseModel):
@@ -140,8 +140,19 @@ async def process_voice(payload: VoicePayload):
     Returns: law match, authority, PDF Base64 string, routing decision
     """
     try:
+        print(f"\n[API] Received process-voice request:")
+        print(f"  - Raw Transcript: '{payload.transcript}'")
+        print(f"  - District:       '{payload.district}'")
+        print(f"  - Language:       '{payload.language}'")
+        print(f"  - Hint:           '{payload.incident_type_hint}'")
+
         # Step 1: Correct ASR errors via phonetic parser
         corrected = resolve_intent(payload.transcript, hint=payload.incident_type_hint)
+        print(f"[API] Phonetic Parser Resolution:")
+        print(f"  - Corrected Text: '{corrected['resolved_text']}'")
+        print(f"  - Incident Type:  '{corrected['incident_type']}'")
+        print(f"  - Method:         '{corrected['method']}'")
+        print(f"  - Confidence:     {corrected['confidence']:.2f}")
 
         # Step 2: Traverse legal graph for deterministic law matching (RAG step)
         legal_match = traverse_legal_graph(corrected["incident_type"])

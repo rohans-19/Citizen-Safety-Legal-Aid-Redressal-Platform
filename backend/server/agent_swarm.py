@@ -53,7 +53,11 @@ LANGUAGE_NAMES = {
     "en": "English",
     "te": "Telugu",
     "ta": "Tamil",
-    "mr": "Marathi"
+    "mr": "Marathi",
+    "ml": "Malayalam",
+    "pa": "Punjabi",
+    "bn": "Bengali",
+    "or": "Odia"
 }
 
 # ── Robust Local Fallbacks when Gemini is rate-limited (429) ─────────────────

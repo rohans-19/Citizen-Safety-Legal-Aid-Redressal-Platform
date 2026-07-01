@@ -212,7 +212,7 @@ for _intent, _terms in INTENT_VOCABULARY.items():
 
 # ── Main Resolution Function ──────────────────────────────────────────────────
 
-def resolve_intent(raw_transcript: str) -> dict:
+def resolve_intent(raw_transcript: str, hint: str = "") -> dict:
     """
     Takes raw ASR transcript and returns:
       - resolved_text: corrected text
@@ -222,6 +222,7 @@ def resolve_intent(raw_transcript: str) -> dict:
 
     Args:
         raw_transcript: Raw speech-to-text output, may contain errors.
+        hint: Optional category hint to help resolve the intent.
 
     Returns:
         dict with resolved_text, incident_type, confidence, method
@@ -305,7 +306,27 @@ def resolve_intent(raw_transcript: str) -> dict:
             "method": "levenshtein_fuzzy"
         }
 
-    # Step 5: Total fallback
+    # Step 5: Hint fallback
+    if hint:
+        hint_clean = hint.strip().lower().replace(" ", "_").replace("-", "_")
+        if hint_clean in INTENT_VOCABULARY:
+            return {
+                "resolved_text": text,
+                "incident_type": hint_clean,
+                "confidence": 0.85,
+                "method": "hint_fallback"
+            }
+        # Check if hint matches any vocab keywords
+        for intent_key, terms in INTENT_VOCABULARY.items():
+            if hint_clean in terms or any(t in hint_clean for t in terms):
+                return {
+                    "resolved_text": text,
+                    "incident_type": intent_key,
+                    "confidence": 0.80,
+                    "method": "hint_vocab_fallback"
+                }
+
+    # Step 6: Total fallback
     return {
         "resolved_text": text,
         "incident_type": "unknown",

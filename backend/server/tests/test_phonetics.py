@@ -32,3 +32,14 @@ def test_resolve_intent_soundex():
     res = resolve_intent("insulted casst on road")
     assert res["incident_type"] == "caste_discrimination"
     assert res["method"] == "soundex_phonetic"
+
+def test_resolve_intent_hint_fallback():
+    # Test fallback using direct key hint
+    res = resolve_intent("xyz abc qrs", hint="domestic_violence")
+    assert res["incident_type"] == "domestic_violence"
+    assert res["method"] == "hint_fallback"
+
+    # Test fallback using keyword hint
+    res = resolve_intent("xyz abc qrs", hint="dalit")
+    assert res["incident_type"] == "caste_discrimination"
+    assert res["method"] == "hint_vocab_fallback"

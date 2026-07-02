@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -14,6 +14,16 @@ from server.supabase_client import log_incident
 from server.zkp_verifier import verify_commitment
 from server.pdf_builder import build_pdf
 from server.threat_detector import detect_threat
+
+API_SECRET_TOKEN = os.getenv("API_SECRET_TOKEN", "civic-shield-secure-token-1234")
+
+async def validate_api_key(x_api_key: str = Header(None)):
+    if not x_api_key or x_api_key != API_SECRET_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized: Invalid API Secret Token"
+        )
+    return x_api_key
 
 app = FastAPI(
     title="CIVIC-SHIELD API",
@@ -70,6 +80,8 @@ class VoicePayload(BaseModel):
     district: str = Field(default="Unknown", max_length=80)
     language: str = Field(default="kn", pattern="^(kn|hi|en|te|ta|mr|ml|pa|bn|or)$")
     incident_type_hint: str = Field(default="", max_length=80)
+    zkp_commitment: str = Field(default="", max_length=100)
+    zkp_proof: dict = Field(default_factory=dict)
 
 class ZKPPayload(BaseModel):
     commitment: str = Field(..., min_length=8, max_length=600)
@@ -127,17 +139,34 @@ async def rate_limiter(request: Request, call_next):
 
 # ── Core Voice Processing ─────────────────────────────────────────────────────
 import base64
+from server.verification_service import send_html_email, build_officer_email_body
+
+OFFICER_EMAILS = {
+    "caste_discrimination": os.getenv("EMAIL_CASTE_DISCRIMINATION", "scst-commission@civicshield.gov.in"),
+    "domestic_violence": os.getenv("EMAIL_DOMESTIC_VIOLENCE", "protection-officer@civicshield.gov.in"),
+    "sexual_harassment_workplace": os.getenv("EMAIL_SEXUAL_HARASSMENT", "icc-harassment@civicshield.gov.in"),
+    "wage_theft": os.getenv("EMAIL_WAGE_THEFT", "wage-inspector@civicshield.gov.in"),
+    "mnrega_denial": os.getenv("EMAIL_MNREGA_DENIAL", "bdo-mnrega@civicshield.gov.in"),
+    "disability_discrimination": os.getenv("EMAIL_DISABILITY_DISCRIMINATION", "pwd-commissioner@civicshield.gov.in"),
+    "pension_denial": os.getenv("EMAIL_PENSION_DENIAL", "social-welfare@civicshield.gov.in"),
+    "ration_denial": os.getenv("EMAIL_RATION_DENIAL", "ration-inspector@civicshield.gov.in"),
+    "healthcare_denial": os.getenv("EMAIL_HEALTHCARE_DENIAL", "health-officer@civicshield.gov.in"),
+    "bonded_labour": os.getenv("EMAIL_BONDED_LABOUR", "bonded-labour-inspector@civicshield.gov.in"),
+    "child_labour": os.getenv("EMAIL_CHILD_LABOUR", "child-welfare-committee@civicshield.gov.in"),
+    "land_encroachment": os.getenv("EMAIL_LAND_ENCROACHMENT", "tahsildar-land@civicshield.gov.in")
+}
 
 @app.post("/process-voice", tags=["Core"])
-async def process_voice(payload: VoicePayload):
+async def process_voice(payload: VoicePayload, _: str = Depends(validate_api_key)):
     """
     Main pipeline:
+    0. Validate ZKP commitment if strict checking is enabled or payload has it
     1. Phonetic parser corrects ASR errors in transcript
     2. LangGraph swarm processes corrected intent
     3. Legal graph traversal returns matched law + authority
     4. PDF complaint generated in-memory (returned as Base64)
     5. Incident logged to Supabase (anonymized)
-    Returns: law match, authority, PDF Base64 string, routing decision
+    6. Email escalation dispatched with PDF attachment to mapped department
     """
     try:
         print(f"\n[API] Received process-voice request:")
@@ -145,6 +174,23 @@ async def process_voice(payload: VoicePayload):
         print(f"  - District:       '{payload.district}'")
         print(f"  - Language:       '{payload.language}'")
         print(f"  - Hint:           '{payload.incident_type_hint}'")
+
+        # Step 0: Zero-Knowledge Proof (ZKP) verification check
+        ENABLE_STRICT_ZKP = os.getenv("ENABLE_STRICT_ZKP", "false").lower() == "true"
+        zkp_verified = False
+        if payload.zkp_commitment:
+            zkp_verified = verify_commitment(payload.zkp_commitment, payload.zkp_proof)
+            if not zkp_verified:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden: Invalid Zero-Knowledge Proof commitment."
+                )
+            print("[ZKP] Successfully verified citizen eligibility proof.")
+        elif ENABLE_STRICT_ZKP:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: Strict ZKP verification mode is enabled. A valid ZKP commitment is required."
+            )
 
         # Step 1: Correct ASR errors via phonetic parser
         corrected = resolve_intent(payload.transcript, hint=payload.incident_type_hint)
@@ -158,7 +204,6 @@ async def process_voice(payload: VoicePayload):
         legal_match = traverse_legal_graph(corrected["incident_type"])
 
         # Step 3: Run LangGraph swarm with legal match context injected
-        # Use frontend-provided district as primary (from geolocation), not "Unknown"
         effective_district = payload.district if payload.district and payload.district.lower() != 'unknown' else ''
         swarm_result = await run_swarm(
             transcript=corrected["resolved_text"],
@@ -195,6 +240,28 @@ async def process_voice(payload: VoicePayload):
             print(f"[DB] Supabase log failed (non-fatal): {db_err}")
             db_logged = False
 
+        # Step 6: Dispatch complaint PDF to the respective departmental officer
+        email_sent = False
+        officer_email = OFFICER_EMAILS.get(corrected["incident_type"], "")
+        if officer_email:
+            subject = f"URGENT: Legal Redressal Complaint - {corrected['incident_type'].replace('_', ' ').title()} [{resolved_district}]"
+            html_body = build_officer_email_body(
+                pseudonym=swarm_result.get("pseudonym", "Citizen-X"),
+                incident_type=corrected["incident_type"],
+                act=legal_match.get("act", "Relevant Welfare Act"),
+                sections=legal_match.get("sections", []),
+                district=resolved_district,
+                narrative=swarm_result.get("narrative", "")
+            )
+            email_sent = send_html_email(
+                to_email=officer_email,
+                subject=subject,
+                html_body=html_body,
+                attachment_bytes=pdf_bytes,
+                attachment_name=filename
+            )
+            print(f"[Escalation] Dispatched complaint PDF to departmental officer: {officer_email} (status: {email_sent})")
+
         return {
             "success": True,
             "corrected_transcript": corrected["resolved_text"],
@@ -211,8 +278,12 @@ async def process_voice(payload: VoicePayload):
             "empathy_message": swarm_result.get("empathy_message", ""),
             "severity": swarm_result.get("severity", 0.5),
             "db_logged": db_logged,
+            "zkp_verified": zkp_verified,
+            "email_sent": email_sent,
         }
 
+    except HTTPException as http_ex:
+        raise http_ex
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -224,7 +295,7 @@ async def process_voice(payload: VoicePayload):
 # ── Threat Detection ──────────────────────────────────────────────────────────
 
 @app.post("/detect-threat", tags=["Safety"])
-async def detect_threat_endpoint(audio: UploadFile = File(...)):
+async def detect_threat_endpoint(audio: UploadFile = File(...), _: str = Depends(validate_api_key)):
     """
     Accepts raw audio bytes.
     Runs AST (Audio Spectrogram Transformer) model on AudioSet classes.
@@ -240,7 +311,7 @@ async def detect_threat_endpoint(audio: UploadFile = File(...)):
 # ── ZKP Verification ──────────────────────────────────────────────────────────
 
 @app.post("/verify-zkp", tags=["Privacy"])
-def verify_zkp(payload: ZKPPayload):
+def verify_zkp(payload: ZKPPayload, _: str = Depends(validate_api_key)):
     """
     Verifies a Pedersen commitment received from the client ZKP wallet.
     Returns True if commitment matches proof without revealing the actual value.
@@ -320,3 +391,110 @@ async def log_incident_endpoint(payload: IncidentLog):
         return {"success": True, "id": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Tehsildar Verification Flow (ZKP Issuance) ────────────────────────────────
+
+from server.verification_service import (
+    generate_signed_token,
+    verify_signed_token,
+    send_html_email,
+    build_tehsildar_email_body
+)
+from fastapi.responses import HTMLResponse
+
+_PENDING_VERIFICATIONS: dict[str, dict] = {}
+_APPROVED_VERIFICATIONS: dict[str, dict] = {}
+
+class VerificationRequest(BaseModel):
+    pseudonym: str = Field(..., min_length=2, max_length=80)
+    aadhaar_hash: str = Field(..., min_length=32, max_length=64)
+    aadhaar: str = Field(..., min_length=12, max_length=12)
+    income: int = Field(..., ge=0)
+    tehsildar_email: str = Field(default="", max_length=120)
+
+@app.post("/request-verification", tags=["Privacy"])
+def request_verification(payload: VerificationRequest, x_api_key: str = Depends(validate_api_key)):
+    """
+    Submits a pending verification request and emails the Tehsildar.
+    """
+    # 1. Determine eligibility
+    eligible = payload.income < 50000
+    
+    # 2. Retrieve Tehsildar email from environment configuration
+    tehsildar_email = os.getenv("TEHSILDAR_EMAIL", "tehsildar@civicshield.gov.in")
+    
+    # 3. Store in pending verifications
+    _PENDING_VERIFICATIONS[payload.pseudonym] = {
+        "aadhaar": payload.aadhaar,
+        "aadhaar_hash": payload.aadhaar_hash,
+        "income": payload.income,
+        "eligible": eligible,
+        "tehsildar_email": tehsildar_email
+    }
+    
+    # 4. Create a signed URL token for approval
+    token = generate_signed_token(payload.aadhaar_hash, payload.income, eligible)
+    server_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    approve_url = f"{server_url}/approve-verification?token={token}&pseudonym={payload.pseudonym}"
+    
+    # 5. Send rich HTML email to the Tehsildar
+    subject = "ACTION REQUIRED: CIVIC-SHIELD Citizen Verification Request"
+    html_body = build_tehsildar_email_body(payload.pseudonym, payload.income, approve_url, aadhaar=payload.aadhaar)
+    
+    sent = send_html_email(tehsildar_email, subject, html_body)
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to dispatch verification email.")
+        
+    return {"success": True, "message": "Verification request dispatched to Tehsildar."}
+
+
+@app.get("/approve-verification", response_class=HTMLResponse, tags=["Privacy"])
+def approve_verification(token: str, pseudonym: str):
+    """
+    Called when the Tehsildar clicks the approval button in the email.
+    Verifies the cryptographic token and approves the citizen.
+    """
+    payload = verify_signed_token(token)
+    if not payload:
+        return """
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding: 40px;">
+                <h1 style="color: red;">Invalid Verification Link</h1>
+                <p>The verification token is invalid or has expired.</p>
+            </body>
+        </html>
+        """
+        
+    # Move to approved
+    _APPROVED_VERIFICATIONS[pseudonym] = {
+        "token": token,
+        "payload": payload
+    }
+    
+    return f"""
+    <html>
+        <body style="font-family: sans-serif; text-align: center; padding: 40px; background-color: #f7f9fc;">
+            <div style="max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; border: 1px solid #e1e8ed; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <h1 style="color: #10b981;">✔ Verification Approved</h1>
+                <p style="font-size: 15px; color: #374151;">Eligibility credential has been signed and issued for citizen reference <strong>{pseudonym}</strong>.</p>
+                <p style="font-size: 13px; color: #6b7280;">You can close this tab now.</p>
+            </div>
+        </body>
+    </html>
+    """
+
+
+@app.get("/check-verification-status", tags=["Privacy"])
+def check_verification_status(pseudonym: str, x_api_key: str = Depends(validate_api_key)):
+    """
+    Polled by the frontend wallet to see if the Tehsildar has approved their credentials.
+    Returns the signed token when approved.
+    """
+    if pseudonym in _APPROVED_VERIFICATIONS:
+        data = _APPROVED_VERIFICATIONS[pseudonym]
+        return {
+            "status": "approved",
+            "credential_token": data["token"]
+        }
+    return {"status": "pending"}

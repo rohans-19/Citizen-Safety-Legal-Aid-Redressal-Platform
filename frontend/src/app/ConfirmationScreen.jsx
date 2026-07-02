@@ -298,7 +298,7 @@ export default function ConfirmationScreen({ data, onReset, onUpdateDetails }) {
           <div>
             <p className="font-semibold text-blue-950">Departmental Escalation Complete</p>
             <p className="mt-0.5 text-blue-800 leading-relaxed">
-              A comprehensive legal complaint report and signed PDF have been officially escalated via email to: <span className="font-mono font-bold text-blue-950">{data.officer_email || 'departmental-officer@gov.in'}</span>.
+              A comprehensive legal complaint report and signed PDF have been officially escalated to the designated authority: <span className="font-bold text-blue-950">{authority || routed_to || 'Concerned Welfare Officer'}</span>.
             </p>
           </div>
         </div>

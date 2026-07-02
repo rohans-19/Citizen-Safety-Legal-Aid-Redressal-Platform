@@ -215,9 +215,9 @@ export default function ConfirmationScreen({ data, onReset, onUpdateDetails }) {
           )}
 
           {data.email_sent && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold px-2.5 py-1.5 rounded flex items-center gap-1 shadow-sm">
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold px-2.5 py-1.5 rounded flex items-center gap-1 shadow-sm" title={data.officer_email}>
               <span>✉️</span>
-              <span>Escalated to Dept</span>
+              <span>Escalated</span>
             </div>
           )}
         </div>
@@ -288,6 +288,19 @@ export default function ConfirmationScreen({ data, onReset, onUpdateDetails }) {
               </a>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Email Escalation Notification */}
+      {data.email_sent && (
+        <div className="border border-blue-200 bg-blue-50/50 rounded px-4 py-3 text-xs text-blue-900 flex items-start gap-2 shadow-xs">
+          <span className="text-base">✉️</span>
+          <div>
+            <p className="font-semibold text-blue-950">Departmental Escalation Complete</p>
+            <p className="mt-0.5 text-blue-800 leading-relaxed">
+              A comprehensive legal complaint report and signed PDF have been officially escalated via email to: <span className="font-mono font-bold text-blue-950">{data.officer_email || 'departmental-officer@gov.in'}</span>.
+            </p>
+          </div>
         </div>
       )}
 

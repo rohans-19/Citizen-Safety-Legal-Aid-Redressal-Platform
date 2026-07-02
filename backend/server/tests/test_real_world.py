@@ -120,6 +120,8 @@ def test_process_voice_zkp_validation():
     assert response.json()["zkp_verified"] is True
     # Verify that it triggered simulated escalation email
     assert "email_sent" in response.json()
+    assert "officer_email" in response.json()
+    assert response.json()["officer_email"] != ""
 
     # 2. Invalid ZKP Commitment
     payload_bad_zkp = {

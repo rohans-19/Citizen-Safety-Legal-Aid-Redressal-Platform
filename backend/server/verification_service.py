@@ -71,6 +71,38 @@ def send_html_email(to_email: str, subject: str, html_body: str, attachment_byte
     Dispatches an HTML formatted email to the recipient.
     If SMTP credentials are not set in .env, falls back to logging/simulating.
     """
+    # Check for Resend API fallback (Port 443 - bypasses Render SMTP block)
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    if resend_api_key:
+        try:
+            import requests
+            import base64
+            headers = {
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json"
+            }
+            # Resend requires standard sender domain, defaults to onboarding@resend.dev
+            from_email = SMTP_FROM if (SMTP_FROM and "@resend.dev" not in SMTP_FROM and "@" in SMTP_FROM) else "onboarding@resend.dev"
+            payload = {
+                "from": from_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body
+            }
+            if attachment_bytes and attachment_name:
+                payload["attachments"] = [{
+                    "content": base64.b64encode(attachment_bytes).decode("utf-8"),
+                    "filename": attachment_name
+                }]
+            res = requests.post("https://api.resend.com/emails", json=payload, headers=headers, timeout=10)
+            if res.status_code in [200, 201]:
+                print(f"[Resend API] Successfully sent email to {to_email}")
+                return True
+            else:
+                print(f"[Resend API] Failed to send: {res.text}")
+        except Exception as resend_err:
+            print(f"[Resend API] Error sending email: {resend_err}")
+
     if not SMTP_USER or not SMTP_PASSWORD:
         print(f"\n[SMTP Simulator] Dispatching email to: {to_email}")
         print(f"  - Subject:    {subject}")

@@ -195,15 +195,33 @@ export default function ConfirmationScreen({ data, onReset, onUpdateDetails }) {
         </div>
       )}
 
-      {/* Complaint Reference */}
-      {complaint_id && (
-        <div>
-          <p className="text-xs text-gray-500 mb-0.5">Reference Number</p>
-          <code className="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-            {complaint_id}
-          </code>
+      {/* Complaint Reference & ZKP Status Badges */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 border border-gray-100 rounded">
+        {complaint_id && (
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5 font-medium">Reference Number</p>
+            <code className="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+              {complaint_id}
+            </code>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {data.zkp_verified && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-2.5 py-1.5 rounded flex items-center gap-1 shadow-sm">
+              <span>🛡️</span>
+              <span>ZKP Verified</span>
+            </div>
+          )}
+
+          {data.email_sent && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold px-2.5 py-1.5 rounded flex items-center gap-1 shadow-sm">
+              <span>✉️</span>
+              <span>Escalated to Dept</span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Law matched */}
       {law_matched && (

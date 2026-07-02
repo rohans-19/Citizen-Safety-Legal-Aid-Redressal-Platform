@@ -54,12 +54,25 @@ const MOCK = {
   },
 }
 
+const API_SECRET_TOKEN = import.meta.env.VITE_API_SECRET_TOKEN || 'civic-shield-secure-token-1234'
+
 // Internal fetch wrapper with timeout + mock fallback
 async function callApi(url, options = {}, mockResponse) {
   const controller = new AbortController()
   const timerId    = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  
+  const headers = {
+    ...(options.headers || {}),
+    'X-API-Key': API_SECRET_TOKEN
+  }
+  const optsWithHeaders = {
+    ...options,
+    headers,
+    signal: controller.signal
+  }
+
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal })
+    const res = await fetch(url, optsWithHeaders)
     clearTimeout(timerId)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return await res.json()
@@ -78,7 +91,15 @@ export const api = {
    * POST /process-voice
    * Sends JSON payload with transcript to the backend agent swarm
    */
-  async processVoice(audioBlob, transcript, language = 'kn', district = '', incidentType = '') {
+  async processVoice(audioBlob, transcript, language = 'kn', district = '', incidentType = '', zkpCommitment = '', zkpProof = {}) {
+    const finalCommitment = zkpCommitment || sessionStorage.getItem('zkp_commitment') || '';
+    const finalProof = zkpProof && Object.keys(zkpProof).length > 0 
+      ? zkpProof 
+      : {
+          value_hash: sessionStorage.getItem('zkp_value_hash') || '',
+          blinding_hash: sessionStorage.getItem('zkp_blinding_hash') || ''
+        };
+
     const data = await callApi(
       `${BACKEND_URL}/process-voice`,
       {
@@ -89,6 +110,8 @@ export const api = {
           district:   district || '',
           language:   language,
           incident_type_hint: incidentType || '',
+          zkp_commitment: finalCommitment,
+          zkp_proof: finalProof
         })
       },
       MOCK.processVoice
@@ -188,7 +211,7 @@ export const api = {
    * POST /verify-zkp
    * Verifies a Pedersen commitment from the ZKP wallet
    */
-  async verifyZkp(commitment, blindingFactor) {
+  async verifyZkp(commitment, valueHash, blindingHash) {
     const data = await callApi(
       `${BACKEND_URL}/verify-zkp`,
       {
@@ -197,8 +220,8 @@ export const api = {
         body:    JSON.stringify({
           commitment,
           proof: {
-            value_hash: blindingFactor, // Mock 64-char hex string
-            blinding_hash: blindingFactor, // Mock 64-char hex string
+            value_hash: valueHash,
+            blinding_hash: blindingHash,
           }
         }),
       },
@@ -212,6 +235,31 @@ export const api = {
       }
     }
     return data
+  },
+
+  async requestVerification(pseudonym, aadhaarHash, income, aadhaar) {
+    return await callApi(
+      `${BACKEND_URL}/request-verification`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          pseudonym,
+          aadhaar_hash: aadhaarHash,
+          aadhaar,
+          income,
+        })
+      },
+      { success: true, message: 'Verification request dispatched to Tehsildar (mock)' }
+    )
+  },
+
+  async checkVerificationStatus(pseudonym) {
+    return await callApi(
+      `${BACKEND_URL}/check-verification-status?pseudonym=${encodeURIComponent(pseudonym)}`,
+      { method: 'GET' },
+      { status: 'pending' }
+    )
   },
 
   /**

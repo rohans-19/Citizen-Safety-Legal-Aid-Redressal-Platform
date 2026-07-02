@@ -18,6 +18,14 @@ export function generateBlindingFactor() {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+export async function sha256(text) {
+  const encoded = new TextEncoder().encode(text)
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', encoded)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 /**
  * Generate SHA-256 Pedersen commitment
  * @param {number} income - User's annual income in INR
